@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useStore } from "@/lib/store/useStore";
 import ComplianceGauge from "@/components/ComplianceGauge";
@@ -68,11 +68,29 @@ function formatDate(iso: string): string {
 export default function ResultsPage() {
   const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
-  const { evaluationId, companyName: storeCompanyName } = useStore();
+  const searchParams = useSearchParams();
+  const { evaluationId: storeEvalId, companyName: storeCompanyName, reset } = useStore();
+
+  // Support both store evaluationId and ?evaluationId= query param (from history)
+  const evaluationId = searchParams.get("evaluationId") ?? storeEvalId;
 
   const [data, setData] = useState<ResultsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [starting, setStarting] = useState(false);
+
+  const handleNewEvaluation = async () => {
+    setStarting(true);
+    if (storeEvalId) {
+      await fetch("/api/evaluation/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ evaluationId: storeEvalId }),
+      }).catch(console.error);
+    }
+    reset();
+    router.push("/");
+  };
 
   useEffect(() => {
     if (sessionStatus === "unauthenticated") {
@@ -355,16 +373,26 @@ export default function ResultsPage() {
           </Link>
 
           <button
+            onClick={handleNewEvaluation}
+            disabled={starting}
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-cavaltec-gold text-cavaltec-dark font-bold text-sm hover:bg-yellow-400 transition-all disabled:opacity-60"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            {starting ? "Iniciando..." : "Nueva evaluación"}
+          </button>
+
+          <button
             disabled
             title="Próximamente"
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-cavaltec-gold/30 text-cavaltec-dark font-bold text-sm cursor-not-allowed opacity-60"
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl border border-slate-200 text-slate-400 font-bold text-sm cursor-not-allowed"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
             </svg>
-            Exportar PDF (próximamente)
+            Exportar PDF
           </button>
         </section>
       </main>

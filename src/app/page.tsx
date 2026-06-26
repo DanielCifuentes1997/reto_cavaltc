@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import Chat from "@/components/Chat";
 import Kanban from "@/components/Kanban";
@@ -263,6 +264,18 @@ export default function Home() {
               )}
             </div>
           </div>
+
+          {/* Historial link */}
+          <Link
+            href="/history"
+            className="hidden sm:flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-xs font-medium"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+              <rect x="9" y="3" width="6" height="4" rx="2" />
+            </svg>
+            Historial
+          </Link>
 
           {/* Score badge */}
           <div className="hidden sm:flex items-center gap-2 bg-white/5 rounded-xl px-4 py-2 border border-white/10">

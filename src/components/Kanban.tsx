@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useCallback } from "react";
 import { useStore } from "@/lib/store/useStore";
 
 const SEVERITY_COLOR: Record<number, { bg: string; text: string; label: string }> = {
@@ -56,7 +57,34 @@ const COLUMNS = [
 ] as const;
 
 export default function Kanban() {
-  const { tasks, updateTaskStatus } = useStore();
+  const { tasks, updateTaskStatus, setTasks, evaluationId } = useStore();
+
+  // Load existing tasks from Supabase on mount (handles page refresh)
+  useEffect(() => {
+    if (!evaluationId) return;
+    fetch(`/api/kanban?evaluationId=${evaluationId}`)
+      .then((r) => r.json())
+      .then(({ tasks: remote }) => {
+        if (Array.isArray(remote) && remote.length > 0) {
+          setTasks(remote);
+        }
+      })
+      .catch(console.error);
+  }, [evaluationId, setTasks]);
+
+  // Optimistic update + persist to Supabase
+  const handleStatusUpdate = useCallback(
+    (taskId: string, status: "todo" | "in_progress" | "done") => {
+      updateTaskStatus(taskId, status);
+      if (!evaluationId) return;
+      fetch(`/api/kanban/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, evaluationId }),
+      }).catch(console.error);
+    },
+    [evaluationId, updateTaskStatus]
+  );
 
   return (
     <div className="w-full h-[600px] bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-200 flex flex-col">
@@ -143,7 +171,7 @@ export default function Kanban() {
                       <div className="flex gap-1.5 pt-1 border-t border-white/60">
                         {col.id !== "todo" && (
                           <button
-                            onClick={() => updateTaskStatus(task.id, col.id === "done" ? "in_progress" : "todo")}
+                            onClick={() => handleStatusUpdate(task.id, col.id === "done" ? "in_progress" : "todo")}
                             className="flex-1 text-xs py-1 rounded-lg bg-white border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 transition-colors"
                           >
                             ← Atrás
@@ -151,7 +179,7 @@ export default function Kanban() {
                         )}
                         {col.id !== "done" && (
                           <button
-                            onClick={() => updateTaskStatus(task.id, col.id === "todo" ? "in_progress" : "done")}
+                            onClick={() => handleStatusUpdate(task.id, col.id === "todo" ? "in_progress" : "done")}
                             className="flex-1 text-xs py-1 rounded-lg bg-cavaltec-gold text-cavaltec-dark font-bold hover:bg-yellow-400 transition-colors"
                           >
                             {col.id === "todo" ? "Iniciar →" : "Cerrar ✓"}

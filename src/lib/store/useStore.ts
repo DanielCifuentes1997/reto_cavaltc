@@ -17,6 +17,7 @@ interface AppState {
   setEvaluationSession: (evaluationId: string, companyId: string, companyName?: string) => void;
   updateScore: (newScore: number) => void;
   addTask: (task: KanbanTask) => void;
+  setTasks: (tasks: KanbanTask[]) => void;
   updateTaskStatus: (taskId: string, status: 'todo' | 'in_progress' | 'done') => void;
   reset: () => void;
 }
@@ -31,6 +32,7 @@ export const useStore = create<AppState>((set) => ({
     set({ evaluationId, companyId, companyName: companyName ?? null }),
   updateScore: (score) => set({ score }),
   addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
+  setTasks: (tasks) => set({ tasks }),
   updateTaskStatus: (taskId, status) =>
     set((state) => ({
       tasks: state.tasks.map((t) => (t.id === taskId ? { ...t, status } : t)),
