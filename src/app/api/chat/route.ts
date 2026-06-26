@@ -1,5 +1,5 @@
 import { getServerSession } from "next-auth";
-import { streamText, tool, convertToModelMessages } from "ai";
+import { streamText, tool, convertToModelMessages, isLoopFinished, isStepCount } from "ai";
 import { google } from "@ai-sdk/google";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -40,9 +40,11 @@ export async function POST(req: Request) {
 
   // 3. Ejecutar IA con herramienta de evaluación
   const result = streamText({
-    model: google("gemini-1.5-flash"),
+    model: google("gemini-2.5-flash"),
     system: systemPrompt,
     messages: await convertToModelMessages(messages),
+    // Continue after each tool call until the AI stops calling tools naturally, max 15 steps
+    stopWhen: [isLoopFinished(), isStepCount(15)],
     tools: {
       registrar_evaluacion_ley_1581: tool({
         description:

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { signIn } from "next-auth/react";
 
 function ShieldIcon() {
@@ -73,9 +74,7 @@ export default function LoginPage() {
           <div className="flex justify-center mb-4">
             <ShieldIcon />
           </div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight mb-1">
-            CAVAL<span className="text-cavaltec-gold">TEC</span>
-          </h1>
+          <Image src="/logo_blanco.png" alt="CAVALTEC" width={180} height={48} className="object-contain mx-auto mb-1" priority />
           <p className="text-slate-400 text-sm">
             Plataforma de Cumplimiento — Ley 1581 de 2012
           </p>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useStore } from "@/lib/store/useStore";
 
 interface EvaluationSummary {
@@ -101,9 +102,7 @@ export default function HistoryPage() {
             Dashboard
           </Link>
           <div className="w-px h-5 bg-white/10" />
-          <span className="text-white font-bold text-sm">
-            CAVAL<span className="text-cavaltec-gold">TEC</span>
-          </span>
+          <Image src="/logo_blanco.png" alt="CAVALTEC" width={100} height={26} className="object-contain" />
           <span className="text-slate-400 text-xs hidden sm:inline">
             · Historial de evaluaciones
           </span>

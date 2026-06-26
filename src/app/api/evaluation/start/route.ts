@@ -3,6 +3,15 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+async function getCompanyName(supabase: ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>, companyId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("companies")
+    .select("name")
+    .eq("id", companyId)
+    .single();
+  return data?.name ?? null;
+}
+
 export async function POST() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
@@ -15,7 +24,7 @@ export async function POST() {
   // 1. Buscar evaluación activa (in_progress) para este usuario
   const { data: activeEval } = await supabase
     .from("evaluations")
-    .select("id, company_id, companies(name)")
+    .select("id, company_id")
     .eq("evaluator_id", evaluatorId)
     .eq("status", "in_progress")
     .order("created_at", { ascending: false })
@@ -23,8 +32,7 @@ export async function POST() {
     .maybeSingle();
 
   if (activeEval) {
-    const companyName =
-      (activeEval.companies as unknown as { name: string } | null)?.name ?? null;
+    const companyName = await getCompanyName(supabase, activeEval.company_id);
     return NextResponse.json({
       status: "ready",
       evaluationId: activeEval.id,
@@ -33,10 +41,10 @@ export async function POST() {
     });
   }
 
-  // 2. Buscar cualquier evaluación previa para obtener la empresa del usuario
+  // 2. Buscar cualquier evaluación previa para obtener la empresa
   const { data: anyEval } = await supabase
     .from("evaluations")
-    .select("company_id, companies(name)")
+    .select("id, company_id")
     .eq("evaluator_id", evaluatorId)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -56,11 +64,11 @@ export async function POST() {
       .single();
 
     if (evalError || !newEval) {
+      console.error("[evaluation/start] Error creando evaluación:", evalError?.message);
       return NextResponse.json({ error: "Error interno" }, { status: 500 });
     }
 
-    const companyName =
-      (anyEval.companies as unknown as { name: string } | null)?.name ?? null;
+    const companyName = await getCompanyName(supabase, anyEval.company_id);
     return NextResponse.json({
       status: "ready",
       evaluationId: newEval.id,

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useStore } from "@/lib/store/useStore";
 import ComplianceGauge from "@/components/ComplianceGauge";
 
@@ -163,9 +164,7 @@ export default function ResultsPage() {
             Dashboard
           </Link>
           <div className="w-px h-5 bg-white/10" />
-          <span className="text-white font-bold text-sm">
-            CAVAL<span className="text-cavaltec-gold">TEC</span>
-          </span>
+          <Image src="/logo_blanco.png" alt="CAVALTEC" width={100} height={26} className="object-contain" />
           <span className="text-slate-400 text-xs hidden sm:inline">
             · Informe de cumplimiento Ley 1581 de 2012
           </span>
@@ -383,17 +382,19 @@ export default function ResultsPage() {
             {starting ? "Iniciando..." : "Nueva evaluación"}
           </button>
 
-          <button
-            disabled
-            title="Próximamente"
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl border border-slate-200 text-slate-400 font-bold text-sm cursor-not-allowed"
+          <a
+            href={`/api/results/pdf?evaluationId=${evaluationId}`}
+            download
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-cavaltec-gold text-cavaltec-dark font-bold text-sm hover:bg-cavaltec-gold transition-all"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="12" x2="12" y2="18" />
+              <polyline points="9 15 12 18 15 15" />
             </svg>
             Exportar PDF
-          </button>
+          </a>
         </section>
       </main>
     </div>

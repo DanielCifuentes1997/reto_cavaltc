@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import Chat from "@/components/Chat";
 import Kanban from "@/components/Kanban";
@@ -256,9 +257,7 @@ export default function Home() {
               </svg>
             </div>
             <div>
-              <span className="text-white font-extrabold text-sm tracking-tight">
-                CAVAL<span className="text-cavaltec-gold">TEC</span>
-              </span>
+              <Image src="/logo_blanco.png" alt="CAVALTEC" width={100} height={26} className="object-contain" priority />
               {companyName && (
                 <p className="text-slate-400 text-xs leading-none mt-0.5">{companyName}</p>
               )}

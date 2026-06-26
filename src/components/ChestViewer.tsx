@@ -3,10 +3,9 @@
 import {
   Suspense,
   useEffect,
+  useState,
   useMemo,
   useRef,
-  Component,
-  type ReactNode,
 } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF, Html, useProgress } from "@react-three/drei";
@@ -17,19 +16,19 @@ import { useStore } from "@/lib/store/useStore";
 // ── Model path logic ────────────────────────────────────────────────────────
 // Files must be placed in /public/: 0.glb, 25.glb, 50.glb, 75.glb, 100.glb
 export function getModelPath(score: number): string {
-  if (score < 25) return "/0.glb";
-  if (score < 50) return "/25.glb";
-  if (score < 75) return "/50.glb";
-  if (score < 100) return "/75.glb";
+  if (score <= 20)  return "/0.glb";
+  if (score <= 50)  return "/20.glb";
+  if (score <= 70)  return "/40.glb";
+  if (score <= 99)  return "/60.glb";
   return "/100.glb";
 }
 
 const STAGE_LABELS: Record<string, { label: string; sub: string }> = {
-  "/0.glb":   { label: "Cofre dañado",          sub: "Estado inicial — sin protección"       },
-  "/25.glb":  { label: "En reparación",          sub: "Primeras medidas implementadas"        },
-  "/50.glb":  { label: "Reconstruyéndose",       sub: "Avance significativo"                  },
-  "/75.glb":  { label: "Casi fortalecido",       sub: "Brechas menores pendientes"            },
-  "/100.glb": { label: "Fortaleza total",        sub: "Cumplimiento Ley 1581 alcanzado"       },
+  "/0.glb":   { label: "Cofre dañado",      sub: "Estado inicial — sin protección"    },
+  "/20.glb":  { label: "En reparación",     sub: "Primeras medidas implementadas"     },
+  "/40.glb":  { label: "Reconstruyéndose",  sub: "Avance significativo"               },
+  "/60.glb":  { label: "Casi fortalecido",  sub: "Brechas menores pendientes"         },
+  "/100.glb": { label: "Fortaleza total",   sub: "Cumplimiento Ley 1581 alcanzado"    },
 };
 
 // ── Loading indicator inside Canvas ────────────────────────────────────────
@@ -152,28 +151,27 @@ function ChestModel({ path, score }: { path: string; score: number }) {
   );
 }
 
-// ── Error boundary — catches 404 on missing GLBs ───────────────────────────
-interface BoundaryProps {
-  children: ReactNode;
-  score: number;
-}
+// ── Smart loader — checks if GLB exists before loading ──────────────────────
+// useGLTF throws through R3F's Suspense layer, bypassing React ErrorBoundary.
+// A HEAD check upfront avoids the throw entirely.
+function SmartChestLoader({ path, score }: { path: string; score: number }) {
+  const [available, setAvailable] = useState<boolean | null>(null);
 
-class ModelErrorBoundary extends Component<BoundaryProps, { hasError: boolean }> {
-  constructor(props: BoundaryProps) {
-    super(props);
-    this.state = { hasError: false };
-  }
+  useEffect(() => {
+    setAvailable(null);
+    fetch(path, { method: "HEAD" })
+      .then((r) => setAvailable(r.ok))
+      .catch(() => setAvailable(false));
+  }, [path]);
 
-  static getDerivedStateFromError(): { hasError: boolean } {
-    return { hasError: true };
-  }
+  if (available === null) return <CanvasLoader />;
+  if (!available) return <PlaceholderChest score={score} />;
 
-  render() {
-    if (this.state.hasError) {
-      return <PlaceholderChest score={this.props.score} />;
-    }
-    return this.props.children;
-  }
+  return (
+    <Suspense fallback={<CanvasLoader />}>
+      <ChestModel path={path} score={score} />
+    </Suspense>
+  );
 }
 
 // ── Main export ─────────────────────────────────────────────────────────────
@@ -210,12 +208,8 @@ export default function ChestViewer() {
           <pointLight position={[-3, 2, 2]} intensity={0.9} color="#f0b429" />
           <pointLight position={[3, -1, 3]} intensity={0.3} color="#4080c0" />
 
-          <Suspense fallback={<CanvasLoader />}>
-            {/* key on error boundary remounts both boundary + model on path change */}
-            <ModelErrorBoundary key={modelPath} score={score}>
-              <ChestModel path={modelPath} score={score} />
-            </ModelErrorBoundary>
-          </Suspense>
+          {/* key remounts SmartChestLoader on path change (resets the HEAD check) */}
+          <SmartChestLoader key={modelPath} path={modelPath} score={score} />
         </Canvas>
       </div>
 
