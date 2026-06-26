@@ -2,11 +2,12 @@ import { streamText, tool } from 'ai';
 import { google } from '@ai-sdk/google';
 import { systemPrompt } from '@/lib/ai/config';
 import { z } from 'zod';
+import { processAiEvaluation } from '@/lib/services/evaluationService';
 
 export const runtime = 'edge';
 
 export async function POST(req: Request) {
-  const { messages } = await req.json();
+  const { messages, evaluationId, companyId } = await req.json();
 
   const result = streamText({
     model: google('gemini-1.5-flash'),
@@ -22,11 +23,23 @@ export async function POST(req: Request) {
           accion_mejora: z.string(),
         }),
         // @ts-expect-error
-        execute: async ({ pregunta_id, cumple }) => {
+        execute: async ({ pregunta_id, cumple, justificacion, accion_mejora }) => {
+          // Invocamos nuestra lógica de negocio aislada
+          const { newScore, awardedWeight } = await processAiEvaluation(
+            evaluationId,
+            companyId,
+            pregunta_id,
+            cumple,
+            justificacion,
+            accion_mejora
+          );
+
           return {
             success: true,
             pregunta_id,
-            estado_actualizado: cumple
+            estado_actualizado: cumple,
+            nuevo_puntaje_global: newScore,
+            peso_otorgado: awardedWeight
           };
         },
       }),
