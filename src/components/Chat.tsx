@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useStore } from "@/lib/store/useStore";
 
 export default function Chat() {
-  const { evaluationId, updateScore, addTask } = useStore();
+  const { evaluationId, updateScore, addTask, score } = useStore();
   const [inputText, setInputText] = useState("");
   const processedToolCalls = useRef(new Set<string>());
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -122,6 +123,27 @@ export default function Chat() {
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Results CTA — visible once at least one question is scored */}
+      {score > 0 && (
+        <div className="px-4 py-2.5 bg-cavaltec-dark/5 border-t border-cavaltec-blue/20 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-cavaltec-gold animate-pulse" />
+            <span className="text-xs text-slate-500 font-medium">
+              Evaluación en curso · {score}% acumulado
+            </span>
+          </div>
+          <Link
+            href="/results"
+            className="flex items-center gap-1.5 text-xs font-bold text-cavaltec-blue hover:text-cavaltec-gold transition-colors whitespace-nowrap"
+          >
+            Ver informe
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </Link>
+        </div>
+      )}
 
       {/* Input */}
       <form
