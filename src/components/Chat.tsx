@@ -15,8 +15,12 @@ export default function Chat() {
   const { evaluationId, updateScore, setTasks, score } = useStore();
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const lastSpokenId = useRef<string | null>(null);
   const prevStatusRef = useRef<string>("");
+  // Refs so voice callback always sees latest values without stale closures
+  const isLoadingRef = useRef(false);
+  const sendMessageRef = useRef<((msg: { text: string }) => Promise<void>) | null>(null);
 
   const transportRef = useRef(
     new DefaultChatTransport({
@@ -41,17 +45,31 @@ export default function Chat() {
 
   const { messages, sendMessage, status } = useChat({
     transport: transportRef.current,
-    // onFinish fires once per complete AI response — the most reliable trigger
     onFinish: syncScore,
   });
+
+  const isLoading = status === "streaming" || status === "submitted";
+  // Keep refs in sync so voice callbacks always see the latest values
+  isLoadingRef.current = isLoading;
+  sendMessageRef.current = sendMessage;
 
   // ── Voice hooks ──────────────────────────────────────────────────────────
   const { speak, stop: stopSpeaking, isSpeaking, isEnabled: audioEnabled, toggle: toggleAudio } =
     useVoiceSpeaker();
 
   const handleTranscript = useCallback((text: string) => {
-    setInputText(text);
-  }, []);
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    // Auto-send immediately after voice recognition ends
+    if (!isLoadingRef.current && sendMessageRef.current) {
+      stopSpeaking();
+      sendMessageRef.current({ text: trimmed });
+      // No ponemos el texto en el input porque ya se envió
+    } else {
+      // Fallback: si la IA está respondiendo, dejar en el input
+      setInputText(trimmed);
+    }
+  }, [stopSpeaking]);
 
   const { isRecording, isSupported: micSupported, toggle: toggleMic } =
     useVoiceInput(handleTranscript);
@@ -81,12 +99,12 @@ export default function Chat() {
     }
   }, [messages, status, speak]);
 
-  // ── Auto-scroll ───────────────────────────────────────────────────────────
+  // ── Auto-scroll — solo dentro del contenedor de mensajes ─────────────────
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
   }, [messages]);
-
-  const isLoading = status === "streaming" || status === "submitted";
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -147,7 +165,7 @@ export default function Chat() {
       </div>
 
       {/* ── Messages ── */}
-      <div className="flex-grow overflow-y-auto px-4 py-4 flex flex-col gap-3 bg-slate-50">
+      <div ref={messagesContainerRef} className="flex-grow overflow-y-auto px-4 py-4 flex flex-col gap-3 bg-slate-50">
         {messages.length === 0 && (
           <div className="text-center text-slate-400 text-sm mt-8">
             <p className="font-semibold">El auditor está listo.</p>
