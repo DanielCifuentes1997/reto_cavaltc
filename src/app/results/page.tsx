@@ -1,6 +1,6 @@
 "use client";
 export const dynamic = 'force-dynamic';
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -26,7 +26,7 @@ const QUESTIONS: QuestionDef[] = [
   { id: 8,  block: 2, label: "Privacidad por defecto (mínimo de datos)",           weight: 12 },
   { id: 9,  block: 3, label: "Sistema de administración de riesgos de privacidad", weight: 16 },
   { id: 10, block: 3, label: "Oficial de Protección de Datos (DPO)",               weight: 8  },
-  { id: 11, block: 0, label: "DPO designado formalmente con funciones definidas",   weight: 0,  qualitative: true },
+  { id: 11, block: 0, label: "DPO designado formalmente con funciones definidas",    weight: 0,  qualitative: true },
 ];
 
 const BLOCKS = [
@@ -60,7 +60,8 @@ function formatDate(iso: string): string {
   });
 }
 
-export default function ResultsPage() {
+// 1. Separamos la lógica en este sub-componente
+function ResultsContent() {
   const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -379,5 +380,21 @@ export default function ResultsPage() {
         </section>
       </main>
     </div>
+  );
+}
+
+// 2. Exportamos la página principal envuelta en Suspense
+export default function ResultsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#f0f4f8] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-[3px] border-[#3b82f6] border-t-transparent rounded-full animate-spin" />
+          <p className="text-[#3b82f6] text-sm font-semibold">Preparando vista...</p>
+        </div>
+      </div>
+    }>
+      <ResultsContent />
+    </Suspense>
   );
 }
