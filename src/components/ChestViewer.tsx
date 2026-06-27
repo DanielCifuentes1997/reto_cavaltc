@@ -4,11 +4,10 @@ import {
   Suspense,
   useEffect,
   useState,
-  useMemo,
   useRef,
 } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useGLTF, Html } from "@react-three/drei";
+import { useGLTF, Html, Clone, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import gsap from "gsap";
 import { useStore } from "@/lib/store/useStore";
@@ -32,8 +31,6 @@ const STAGE_LABELS: Record<string, { label: string; sub: string }> = {
 };
 
 // ── Loading indicator inside Canvas ────────────────────────────────────────
-// Note: useProgress (drei) causes setState-during-render when used as Suspense
-// fallback alongside useGLTF. Static spinner avoids the conflict entirely.
 function CanvasLoader() {
   return (
     <Html center>
@@ -64,7 +61,6 @@ function PlaceholderChest({ score }: { score: number }) {
 
   return (
     <group ref={groupRef} scale={[1.9, 1.9, 1.9]}>
-      {/* Body */}
       <mesh position={[0, -0.2, 0]} castShadow>
         <boxGeometry args={[1.6, 0.75, 1.0]} />
         <meshStandardMaterial
@@ -75,7 +71,6 @@ function PlaceholderChest({ score }: { score: number }) {
           metalness={0.6}
         />
       </mesh>
-      {/* Lid */}
       <mesh position={[0, 0.32, -0.12]} castShadow>
         <boxGeometry args={[1.6, 0.38, 0.76]} />
         <meshStandardMaterial
@@ -86,17 +81,14 @@ function PlaceholderChest({ score }: { score: number }) {
           metalness={0.7}
         />
       </mesh>
-      {/* Lock body */}
       <mesh position={[0, -0.08, 0.52]}>
         <boxGeometry args={[0.22, 0.26, 0.06]} />
         <meshStandardMaterial color={mainColor} emissive={mainColor} emissiveIntensity={0.4} metalness={0.8} />
       </mesh>
-      {/* Lock shackle */}
       <mesh position={[0, 0.14, 0.52]}>
         <torusGeometry args={[0.1, 0.025, 8, 16, Math.PI]} />
         <meshStandardMaterial color={mainColor} emissive={mainColor} emissiveIntensity={0.3} metalness={0.9} />
       </mesh>
-      {/* Corner bands */}
       {([-0.75, 0.75] as number[]).map((x) => (
         <mesh key={x} position={[x, -0.07, 0]} castShadow>
           <boxGeometry args={[0.06, 0.85, 1.06]} />
@@ -112,15 +104,12 @@ function ChestModel({ path }: { path: string }) {
   const { scene } = useGLTF(path);
   const groupRef = useRef<THREE.Group>(null);
 
-  // Deep clone so each instance has independent materials
-  const cloned = useMemo(() => scene.clone(true), [scene]);
-
   // Auto-rotate
   useFrame((_, delta) => {
     if (groupRef.current) groupRef.current.rotation.y += delta * 0.38;
   });
 
-  // Scale-in pop on mount — preserve original GLB material colors
+  // Scale-in pop on mount
   useEffect(() => {
     if (!groupRef.current) return;
     const group = groupRef.current;
@@ -130,27 +119,22 @@ function ChestModel({ path }: { path: string }) {
 
   return (
     <group ref={groupRef} position={[0, -0.5, 0]}>
-      <primitive object={cloned} />
+      {/* Clone de drei: clona geometría con texturas correctamente referenciadas */}
+      <Clone object={scene} />
     </group>
   );
 }
 
-// ── Smart loader — checks if GLB exists before loading ──────────────────────
-// useGLTF throws through R3F's Suspense layer, bypassing React ErrorBoundary.
-// A HEAD check upfront avoids the throw entirely.
+// Silencia el error de texturas KTX2/comprimidas que el browser no puede decodificar.
+THREE.DefaultLoadingManager.onError = (url: string) => {
+  if (url.startsWith("blob:")) return;
+  console.error("THREE LoadingManager error:", url);
+};
+
+// ── Smart loader — bypass HEAD check ──────────────────────
 function SmartChestLoader({ path, score }: { path: string; score: number }) {
-  const [available, setAvailable] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    setAvailable(null);
-    fetch(path, { method: "HEAD" })
-      .then((r) => setAvailable(r.ok))
-      .catch(() => setAvailable(false));
-  }, [path]);
-
-  if (available === null) return <CanvasLoader />;
-  if (!available) return <PlaceholderChest score={score} />;
-
+  // Eliminamos el fetch HEAD que causaba el bloque azul falso negativo.
+  // Cargamos directamente el GLB. Si falla (ej: archivo no existe), muestra el spinner o falla limpiamente.
   return (
     <Suspense fallback={<CanvasLoader />}>
       <ChestModel path={path} />
@@ -180,6 +164,8 @@ export default function ChestViewer() {
           shadows
         >
           <color attach="background" args={["#0d1f33"]} />
+          
+          <Environment preset="studio" />
 
           <ambientLight intensity={0.45} />
           <directionalLight
@@ -192,7 +178,6 @@ export default function ChestViewer() {
           <pointLight position={[-3, 2, 2]} intensity={0.9} color="#f0b429" />
           <pointLight position={[3, -1, 3]} intensity={0.3} color="#4080c0" />
 
-          {/* key remounts SmartChestLoader on path change (resets the HEAD check) */}
           <SmartChestLoader key={modelPath} path={modelPath} score={score} />
         </Canvas>
       </div>

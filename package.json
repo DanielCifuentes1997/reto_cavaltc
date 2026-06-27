@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.0",
+    "@ai-sdk/groq": "^4.0.0",
     "@ai-sdk/react": "^4.0.2",
     "@react-pdf/renderer": "^4.5.1",
     "@react-three/drei": "^10.7.7",

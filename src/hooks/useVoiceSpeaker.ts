@@ -32,13 +32,12 @@ export function useVoiceSpeaker() {
   }, []);
 
   const speak = useCallback(
-    async (text: string) => {
+    async (text: string, onEnd?: () => void) => {
       if (!isEnabled) return;
 
       const clean = stripMarkdown(text);
       if (!clean) return;
 
-      // Cancela cualquier audio anterior
       stop();
 
       setIsSpeaking(true);
@@ -55,6 +54,7 @@ export function useVoiceSpeaker() {
 
         if (!res.ok || controller.signal.aborted) {
           setIsSpeaking(false);
+          onEnd?.();
           return;
         }
 
@@ -68,10 +68,12 @@ export function useVoiceSpeaker() {
         audio.onended = () => {
           URL.revokeObjectURL(url);
           setIsSpeaking(false);
+          onEnd?.();
         };
         audio.onerror = () => {
           URL.revokeObjectURL(url);
           setIsSpeaking(false);
+          onEnd?.();
         };
 
         await audio.play();
@@ -80,6 +82,7 @@ export function useVoiceSpeaker() {
           console.error("[tts]", err);
         }
         setIsSpeaking(false);
+        onEnd?.();
       }
     },
     [isEnabled, stop]

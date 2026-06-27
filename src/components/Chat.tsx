@@ -14,6 +14,7 @@ export default function Chat() {
   const isAuditor = session?.user?.role === "auditor";
   const { evaluationId, updateScore, setTasks, score } = useStore();
   const [inputText, setInputText] = useState("");
+  const [isHandsFree, setIsHandsFree] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const lastSpokenId = useRef<string | null>(null);
@@ -21,6 +22,9 @@ export default function Chat() {
   // Refs so voice callback always sees latest values without stale closures
   const isLoadingRef = useRef(false);
   const sendMessageRef = useRef<((msg: { text: string }) => Promise<void>) | null>(null);
+  const isHandsFreeRef = useRef(false);
+  const toggleMicRef = useRef<(() => void) | null>(null);
+  const isRecordingRef = useRef(false);
 
   const transportRef = useRef(
     new DefaultChatTransport({
@@ -74,6 +78,11 @@ export default function Chat() {
   const { isRecording, isSupported: micSupported, toggle: toggleMic } =
     useVoiceInput(handleTranscript);
 
+  // Keep refs in sync
+  isHandsFreeRef.current = isHandsFree;
+  isRecordingRef.current = isRecording;
+  toggleMicRef.current = toggleMic;
+
   // ── Backup sync on status transition streaming/submitted → ready ──────────
   useEffect(() => {
     const wasStreaming = prevStatusRef.current === "streaming" || prevStatusRef.current === "submitted";
@@ -95,7 +104,19 @@ export default function Chat() {
 
     if (text) {
       lastSpokenId.current = last.id;
-      speak(text);
+      speak(text, () => {
+        // Modo manos libres: cuando termina el audio, reactiva el micrófono
+        if (
+          isHandsFreeRef.current &&
+          !isLoadingRef.current &&
+          !isRecordingRef.current &&
+          toggleMicRef.current
+        ) {
+          setTimeout(() => {
+            if (isHandsFreeRef.current) toggleMicRef.current?.();
+          }, 400); // pequeña pausa para que no capture el eco del altavoz
+        }
+      });
     }
   }, [messages, status, speak]);
 
@@ -121,6 +142,16 @@ export default function Chat() {
     toggleMic();
   };
 
+  const handleHandsFreeToggle = () => {
+    const next = !isHandsFree;
+    setIsHandsFree(next);
+    if (!next) {
+      // Al desactivar: detener grabación y audio en curso
+      if (isRecording) toggleMic();
+      stopSpeaking();
+    }
+  };
+
   return (
     <div className="flex flex-col h-[600px] w-full bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
 
@@ -138,6 +169,26 @@ export default function Chat() {
           </div>
           <p className="text-xs text-blue-200">Asistido por Gemini</p>
         </div>
+
+        {/* Hands-free toggle */}
+        {micSupported && (
+          <button
+            onClick={handleHandsFreeToggle}
+            title={isHandsFree ? "Desactivar modo conversación" : "Modo conversación (manos libres)"}
+            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+              isHandsFree
+                ? "bg-cavaltec-gold text-cavaltec-dark shadow-lg shadow-yellow-400/30 scale-110"
+                : "bg-white/5 hover:bg-white/15 opacity-60 hover:opacity-100"
+            }`}
+          >
+            {/* Headset icon */}
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+              <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z" />
+              <path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+            </svg>
+          </button>
+        )}
 
         {/* Audio toggle */}
         <button
@@ -239,8 +290,22 @@ export default function Chat() {
         </div>
       )}
 
-      {/* ── Recording indicator ── */}
-      {isRecording && (
+      {/* ── Hands-free indicator ── */}
+      {isHandsFree && (
+        <div className="px-4 py-2 border-t flex items-center gap-2"
+          style={{ background: "rgba(240,180,41,0.08)", borderColor: "rgba(240,180,41,0.2)" }}>
+          <span className={`w-2 h-2 rounded-full ${isRecording ? "bg-red-500 animate-ping" : isSpeaking ? "bg-cavaltec-gold animate-pulse" : "bg-green-400 animate-pulse"}`} />
+          <span className="text-xs font-semibold" style={{ color: "#92701a" }}>
+            {isRecording ? "Escuchando…" : isSpeaking ? "AUDITOR-1581 hablando…" : "Modo conversación activo — esperando respuesta"}
+          </span>
+          <button onClick={handleHandsFreeToggle} className="ml-auto text-xs text-amber-600 hover:text-red-500 transition-colors font-bold">
+            Desactivar
+          </button>
+        </div>
+      )}
+
+      {/* ── Recording indicator (solo sin manos libres) ── */}
+      {isRecording && !isHandsFree && (
         <div className="px-4 py-2 bg-red-50 border-t border-red-100 flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
           <span className="text-xs text-red-600 font-semibold">Grabando… Presiona el micrófono para terminar</span>

@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { streamText, tool, convertToModelMessages, isStepCount } from "ai";
-import { google } from "@ai-sdk/google";
+import { groq } from "@ai-sdk/groq";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   const companyId = evaluation.company_id;
 
   const result = streamText({
-    model: google("gemini-2.5-flash"),
+    model: groq("llama-3.3-70b-versatile"),
     system: systemPrompt,
     messages: await convertToModelMessages(messages),
     stopWhen: [isStepCount(15)],
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
     onFinish: ({ steps }) => {
       const toolCalls = steps.reduce((n, s) => n + (s.toolCalls?.length ?? 0), 0);
       if (toolCalls === 0) {
-        console.warn(`[chat] Gemini NO llamó el tool en esta respuesta (eval=${evaluationId})`);
+        console.warn(`[chat] Llama NO llamó el tool en esta respuesta (eval=${evaluationId})`);
       }
     },
   });
