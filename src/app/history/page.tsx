@@ -11,18 +11,19 @@ interface EvaluationSummary {
   score: number;
   status: string;
   createdAt: string;
+  evaluatorId: string;
   companyName: string;
+  companyNit: string | null;
   sector: string;
+  companySize: string | null;
 }
 
 function ScoreBadge({ score }: { score: number }) {
   const color = score >= 80 ? "#22c55e" : score >= 50 ? "#f0b429" : "#ef4444";
   const label = score >= 80 ? "Alto" : score >= 50 ? "Parcial" : "Bajo";
   return (
-    <span
-      className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full"
-      style={{ background: `${color}18`, color }}
-    >
+    <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full"
+      style={{ background: `${color}18`, color }}>
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
       {score}% · {label}
     </span>
@@ -33,12 +34,9 @@ function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     in_progress: { label: "En curso",   cls: "bg-blue-50 text-blue-600"   },
     completed:   { label: "Completado", cls: "bg-green-50 text-green-600" },
-    cancelled:   { label: "Cancelado",  cls: "bg-slate-100 text-slate-500" },
   };
   const { label, cls } = map[status] ?? { label: status, cls: "bg-slate-100 text-slate-500" };
-  return (
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cls}`}>{label}</span>
-  );
+  return <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cls}`}>{label}</span>;
 }
 
 function formatDate(iso: string) {
@@ -55,6 +53,8 @@ export default function HistoryPage() {
   const [evaluations, setEvaluations] = useState<EvaluationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+
+  const isAuditor = session?.user?.role === "auditor";
 
   useEffect(() => {
     if (sessionStatus === "unauthenticated") { router.push("/login"); return; }
@@ -88,44 +88,66 @@ export default function HistoryPage() {
     );
   }
 
+  const completedEvals = evaluations.filter((e) => e.status === "completed");
+  const displayList = isAuditor ? completedEvals : evaluations;
+
   return (
     <div className="min-h-screen bg-cavaltec-light">
       {/* Header */}
       <header className="bg-cavaltec-dark sticky top-0 z-40 shadow-xl">
         <div className="container mx-auto px-4 h-14 flex items-center gap-4">
-          <Link href="/dashboard" className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-            Dashboard
-          </Link>
+          {!isAuditor ? (
+            <Link href="/dashboard"
+              className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              Dashboard
+            </Link>
+          ) : (
+            <span className="flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full"
+              style={{ background: "rgba(240,180,41,0.12)", color: "#f0b429", border: "1px solid rgba(240,180,41,0.25)" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+              </svg>
+              Modo auditor
+            </span>
+          )}
+
           <div className="w-px h-5 bg-white/10" />
           <img src="/logo_blanco.png" alt="CAVALTEC" className="h-7 w-auto object-contain" />
           <span className="text-slate-400 text-xs hidden sm:inline">
-            · Historial de evaluaciones
+            · {isAuditor ? "Evaluaciones disponibles para auditar" : "Historial de evaluaciones"}
           </span>
-          <button
-            onClick={handleNewEvaluation}
-            disabled={starting}
-            className="ml-auto flex items-center gap-2 bg-cavaltec-gold text-cavaltec-dark text-xs font-bold px-4 py-2 rounded-xl hover:bg-yellow-400 transition-colors disabled:opacity-60"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            {starting ? "Iniciando..." : "Nueva evaluación"}
-          </button>
+
+          {/* Solo evaluadores pueden iniciar nueva evaluación */}
+          {!isAuditor && (
+            <button
+              onClick={handleNewEvaluation}
+              disabled={starting}
+              className="ml-auto flex items-center gap-2 bg-cavaltec-gold text-cavaltec-dark text-xs font-bold px-4 py-2 rounded-xl hover:bg-yellow-400 transition-colors disabled:opacity-60"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              {starting ? "Iniciando..." : "Nueva evaluación"}
+            </button>
+          )}
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="mb-6">
-          <h1 className="text-2xl font-extrabold text-cavaltec-dark">Historial de evaluaciones</h1>
+          <h1 className="text-2xl font-extrabold text-cavaltec-dark">
+            {isAuditor ? "Evaluaciones para auditar" : "Historial de evaluaciones"}
+          </h1>
           <p className="text-slate-400 text-sm mt-1">
-            {evaluations.length} evaluación{evaluations.length !== 1 ? "es" : ""} registrada{evaluations.length !== 1 ? "s" : ""} para tu cuenta
+            {displayList.length} evaluación{displayList.length !== 1 ? "es" : ""} {isAuditor ? "completada" : "registrada"}{displayList.length !== 1 ? "s" : ""}
+            {isAuditor && " — solo lectura"}
           </p>
         </div>
 
-        {evaluations.length === 0 ? (
+        {displayList.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
             <div className="w-14 h-14 rounded-full bg-cavaltec-light flex items-center justify-center mx-auto mb-4">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round">
@@ -133,49 +155,66 @@ export default function HistoryPage() {
                 <rect x="9" y="3" width="6" height="4" rx="2" />
               </svg>
             </div>
-            <p className="text-slate-500 font-semibold mb-1">Sin evaluaciones aún</p>
-            <p className="text-slate-400 text-sm mb-6">Inicia tu primer diagnóstico Ley 1581.</p>
-            <button
-              onClick={handleNewEvaluation}
-              className="bg-cavaltec-gold text-cavaltec-dark font-bold text-sm px-6 py-3 rounded-xl hover:bg-yellow-400 transition-colors"
-            >
-              Iniciar diagnóstico →
-            </button>
+            <p className="text-slate-500 font-semibold mb-1">
+              {isAuditor ? "Sin evaluaciones completadas aún" : "Sin evaluaciones aún"}
+            </p>
+            <p className="text-slate-400 text-sm">
+              {isAuditor
+                ? "Las evaluaciones completadas aparecerán aquí para que puedas auditarlas."
+                : "Inicia tu primer diagnóstico Ley 1581."}
+            </p>
+            {!isAuditor && (
+              <button
+                onClick={handleNewEvaluation}
+                className="mt-6 bg-cavaltec-gold text-cavaltec-dark font-bold text-sm px-6 py-3 rounded-xl hover:bg-yellow-400 transition-colors"
+              >
+                Iniciar diagnóstico →
+              </button>
+            )}
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {evaluations.map((ev) => (
-              <div
-                key={ev.id}
-                className="bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3"
-              >
-                {/* Left: date + company */}
+            {displayList.map((ev) => (
+              <div key={ev.id}
+                className="bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                {/* Left */}
                 <div className="flex-grow min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <StatusBadge status={ev.status} />
                     <span className="text-xs text-slate-400">{formatDate(ev.createdAt)}</span>
                   </div>
                   <p className="font-bold text-cavaltec-dark text-sm truncate">{ev.companyName}</p>
-                  <p className="text-xs text-slate-400">{ev.sector}</p>
+                  <p className="text-xs text-slate-400">
+                    {ev.sector}
+                    {ev.companySize && ` · ${ev.companySize}`}
+                  </p>
+                  {/* Auditor ve el email del evaluador */}
+                  {isAuditor && (
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Evaluado por: <span className="font-medium">{ev.evaluatorId}</span>
+                    </p>
+                  )}
                 </div>
 
-                {/* Right: score + actions */}
+                {/* Right */}
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <ScoreBadge score={ev.score} />
 
-                  {ev.status === "in_progress" ? (
-                    <Link
-                      href="/dashboard"
+                  {/* Auditor: solo ver informe. Evaluador: continuar si en curso o ver informe */}
+                  {isAuditor ? (
+                    <Link href={`/results?evaluationId=${ev.id}`}
+                      className="text-xs font-bold text-cavaltec-blue hover:text-cavaltec-gold transition-colors">
+                      Auditar →
+                    </Link>
+                  ) : ev.status === "in_progress" ? (
+                    <Link href="/dashboard"
                       onClick={() => useStore.getState().setEvaluationSession(ev.id, "", "")}
-                      className="text-xs font-bold text-cavaltec-blue hover:text-cavaltec-gold transition-colors"
-                    >
+                      className="text-xs font-bold text-cavaltec-blue hover:text-cavaltec-gold transition-colors">
                       Continuar →
                     </Link>
                   ) : (
-                    <Link
-                      href={`/results?evaluationId=${ev.id}`}
-                      className="text-xs font-bold text-cavaltec-blue hover:text-cavaltec-gold transition-colors"
-                    >
+                    <Link href={`/results?evaluationId=${ev.id}`}
+                      className="text-xs font-bold text-cavaltec-blue hover:text-cavaltec-gold transition-colors">
                       Ver informe →
                     </Link>
                   )}

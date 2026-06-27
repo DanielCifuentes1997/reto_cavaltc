@@ -16,12 +16,35 @@ export async function middleware(request: NextRequest) {
     PUBLIC_PATHS.includes(pathname) ||
     pathname.startsWith("/api/auth");
 
+  // Unauthenticated → login
   if (!token && !isPublic) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  // Authenticated on /login → redirect by role
   if (token && pathname.startsWith("/login")) {
+    if (token.role === "administrador") {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
+    if (token.role === "auditor") {
+      return NextResponse.redirect(new URL("/history", request.url));
+    }
     return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // /admin only for administrador
+  if (pathname.startsWith("/admin") && token?.role !== "administrador") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // /dashboard is for evaluadores — redirect admin and auditor away
+  if (pathname === "/dashboard") {
+    if (token?.role === "administrador") {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
+    if (token?.role === "auditor") {
+      return NextResponse.redirect(new URL("/history", request.url));
+    }
   }
 
   return NextResponse.next();

@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 
   const { data: withNit, error: nitError } = await supabase
     .from("companies")
-    .insert({ name, nit, industry_sector: sector })
+    .insert({ name, nit, industry_sector: sector, company_size: size ?? null })
     .select("id")
     .single();
 
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
     // Fallback: insertar sin NIT
     const { data: withoutNit, error: fallbackError } = await supabase
       .from("companies")
-      .insert({ name, industry_sector: sector })
+      .insert({ name, industry_sector: sector, company_size: size ?? null })
       .select("id")
       .single();
 

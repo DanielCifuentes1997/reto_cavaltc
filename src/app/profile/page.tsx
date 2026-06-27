@@ -12,6 +12,13 @@ const SECTORS = [
   "Gobierno y Sector Público", "Telecomunicaciones", "Comercio y Retail", "Otro",
 ];
 
+const SIZES = [
+  "Microempresa (1–10 empleados)",
+  "Pequeña empresa (11–50 empleados)",
+  "Mediana empresa (51–200 empleados)",
+  "Grande empresa (más de 200 empleados)",
+];
+
 const PQRS_TYPES = [
   { value: "peticion", label: "Petición" },
   { value: "queja", label: "Queja" },
@@ -21,7 +28,7 @@ const PQRS_TYPES = [
 
 type Tab = "empresa" | "historial" | "pqrs";
 
-interface Company { name: string; nit: string | null; industry_sector: string; }
+interface Company { name: string; nit: string | null; industry_sector: string; company_size: string | null; }
 interface Evaluation { id: string; score: number; status: string; createdAt: string; companyName: string; sector: string; }
 
 function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -47,7 +54,7 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<Tab>("empresa");
 
   const [company, setCompany] = useState<Company | null>(null);
-  const [companyForm, setCompanyForm] = useState({ name: "", nit: "", sector: "" });
+  const [companyForm, setCompanyForm] = useState({ name: "", nit: "", sector: "", size: "" });
   const [companyLoading, setCompanyLoading] = useState(true);
   const [companySaving, setCompanySaving] = useState(false);
   const [companyMsg, setCompanyMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -69,7 +76,7 @@ export default function ProfilePage() {
       .then(({ company: c }) => {
         if (c) {
           setCompany(c);
-          setCompanyForm({ name: c.name, nit: c.nit ?? "", sector: c.industry_sector });
+          setCompanyForm({ name: c.name, nit: c.nit ?? "", sector: c.industry_sector, size: c.company_size ?? "" });
         }
       })
       .finally(() => setCompanyLoading(false));
@@ -101,7 +108,7 @@ export default function ProfilePage() {
       });
       if (res.ok) {
         setCompanyMsg({ type: "ok", text: "Datos actualizados correctamente." });
-        setCompany({ name: companyForm.name, nit: companyForm.nit, industry_sector: companyForm.sector });
+        setCompany({ name: companyForm.name, nit: companyForm.nit, industry_sector: companyForm.sector, company_size: companyForm.size });
       } else {
         const d = await res.json();
         setCompanyMsg({ type: "err", text: d.error ?? "Error al guardar." });
@@ -269,6 +276,20 @@ export default function ProfilePage() {
                   >
                     <option value="" disabled style={{ background: "#0d1f33" }}>Selecciona el sector</option>
                     {SECTORS.map((s) => (
+                      <option key={s} value={s} style={{ background: "#0d1f33", color: "white" }}>{s}</option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label="Tamaño de la empresa">
+                  <select
+                    value={companyForm.size}
+                    onChange={(e) => setCompanyForm((f) => ({ ...f, size: e.target.value }))}
+                    className="input-field appearance-none"
+                    style={{ color: companyForm.size ? "white" : "#64748b" }}
+                  >
+                    <option value="" style={{ background: "#0d1f33", color: "#64748b" }}>Sin especificar</option>
+                    {SIZES.map((s) => (
                       <option key={s} value={s} style={{ background: "#0d1f33", color: "white" }}>{s}</option>
                     ))}
                   </select>

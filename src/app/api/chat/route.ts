@@ -41,6 +41,8 @@ export async function POST(req: Request) {
     system: systemPrompt,
     messages: await convertToModelMessages(messages),
     stopWhen: [isStepCount(15)],
+    // @ts-ignore
+    maxSteps: 10,
     tools: {
       registrar_evaluacion_ley_1581: tool({
         description:

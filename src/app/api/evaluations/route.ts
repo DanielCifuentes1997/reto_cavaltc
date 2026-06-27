@@ -9,19 +9,29 @@ export async function GET() {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  const role = session.user.role;
+  const isPrivileged = role === "administrador" || role === "auditor";
+
   const supabase = createAdminClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("evaluations")
     .select(`
       id,
       total_compliance_score,
       status,
       created_at,
-      companies ( name, industry_sector )
+      evaluator_id,
+      companies ( name, nit, industry_sector, company_size )
     `)
-    .eq("evaluator_id", session.user.email)
     .order("created_at", { ascending: false });
+
+  // Evaluadores only see their own; admin/auditor see all
+  if (!isPrivileged) {
+    query = query.eq("evaluator_id", session.user.email);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -34,8 +44,11 @@ export async function GET() {
       score: ev.total_compliance_score ?? 0,
       status: ev.status ?? "in_progress",
       createdAt: ev.created_at,
+      evaluatorId: ev.evaluator_id,
       companyName: company?.name ?? "—",
+      companyNit: company?.nit ?? null,
       sector: company?.industry_sector ?? "—",
+      companySize: company?.company_size ?? null,
     };
   });
 

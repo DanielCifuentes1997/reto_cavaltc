@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useStore } from "@/lib/store/useStore";
@@ -9,6 +10,8 @@ import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useVoiceSpeaker } from "@/hooks/useVoiceSpeaker";
 
 export default function Chat() {
+  const { data: session } = useSession();
+  const isAuditor = session?.user?.role === "auditor";
   const { evaluationId, updateScore, setTasks, score } = useStore();
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -226,61 +229,72 @@ export default function Chat() {
         </div>
       )}
 
-      {/* ── Input ── */}
-      <form
-        onSubmit={handleSubmit}
-        className="px-4 py-3 bg-white border-t border-slate-200 flex gap-2"
-      >
-        <input
-          type="text"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          disabled={isLoading || isRecording}
-          placeholder={
-            isRecording
-              ? "Grabando voz..."
-              : evaluationId
-              ? "Escribe tu respuesta o usa el micrófono…"
-              : "Iniciando sesión segura..."
-          }
-          className="flex-grow px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cavaltec-blue focus:border-transparent disabled:bg-slate-50 disabled:text-slate-400"
-        />
-
-        {micSupported && (
-          <button
-            type="button"
-            onClick={handleMicToggle}
-            disabled={isLoading}
-            title={isRecording ? "Detener grabación" : "Hablar"}
-            className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
-              isRecording
-                ? "bg-red-500 text-white shadow-lg shadow-red-200 scale-110"
-                : "bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-cavaltec-blue"
-            } disabled:opacity-40`}
-          >
-            {isRecording ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="4" y="4" width="16" height="16" rx="2" />
-              </svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                <line x1="12" y1="19" x2="12" y2="23" />
-                <line x1="8" y1="23" x2="16" y2="23" />
-              </svg>
-            )}
-          </button>
-        )}
-
-        <button
-          type="submit"
-          disabled={isLoading || !inputText.trim() || !evaluationId}
-          className="bg-cavaltec-gold text-cavaltec-dark px-5 py-2 rounded-lg font-bold text-sm hover:bg-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      {/* ── Auditor banner / Input ── */}
+      {isAuditor ? (
+        <div className="px-4 py-3 bg-amber-50 border-t border-amber-200 flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" strokeLinecap="round">
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span className="text-xs font-semibold text-amber-800">
+            Modo solo lectura — los auditores no pueden enviar mensajes
+          </span>
+        </div>
+      ) : (
+        <form
+          onSubmit={handleSubmit}
+          className="px-4 py-3 bg-white border-t border-slate-200 flex gap-2"
         >
-          Enviar
-        </button>
-      </form>
+          <input
+            type="text"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            disabled={isLoading || isRecording}
+            placeholder={
+              isRecording
+                ? "Grabando voz..."
+                : evaluationId
+                ? "Escribe tu respuesta o usa el micrófono…"
+                : "Iniciando sesión segura..."
+            }
+            className="flex-grow px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cavaltec-blue focus:border-transparent disabled:bg-slate-50 disabled:text-slate-400"
+          />
+
+          {micSupported && (
+            <button
+              type="button"
+              onClick={handleMicToggle}
+              disabled={isLoading}
+              title={isRecording ? "Detener grabación" : "Hablar"}
+              className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                isRecording
+                  ? "bg-red-500 text-white shadow-lg shadow-red-200 scale-110"
+                  : "bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-cavaltec-blue"
+              } disabled:opacity-40`}
+            >
+              {isRecording ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="4" y="4" width="16" height="16" rx="2" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+              )}
+            </button>
+          )}
+
+          <button
+            type="submit"
+            disabled={isLoading || !inputText.trim() || !evaluationId}
+            className="bg-cavaltec-gold text-cavaltec-dark px-5 py-2 rounded-lg font-bold text-sm hover:bg-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Enviar
+          </button>
+        </form>
+      )}
     </div>
   );
 }

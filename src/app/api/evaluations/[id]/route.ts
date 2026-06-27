@@ -13,15 +13,20 @@ export async function DELETE(
   }
 
   const { id } = await params;
+  const isAdmin = session.user.role === "administrador";
   const supabase = createAdminClient();
 
-  // Verify ownership before deleting
-  const { data: evaluation } = await supabase
+  // Verify ownership — admin can delete any evaluation
+  let check = supabase
     .from("evaluations")
     .select("id")
-    .eq("id", id)
-    .eq("evaluator_id", session.user.email)
-    .maybeSingle();
+    .eq("id", id);
+
+  if (!isAdmin) {
+    check = check.eq("evaluator_id", session.user.email);
+  }
+
+  const { data: evaluation } = await check.maybeSingle();
 
   if (!evaluation) {
     return NextResponse.json({ error: "No encontrado o acceso denegado" }, { status: 404 });

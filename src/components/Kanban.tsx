@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { useStore } from "@/lib/store/useStore";
 
 const SEVERITY_COLOR: Record<number, { bg: string; text: string; label: string }> = {
@@ -62,6 +63,8 @@ const COLUMNS = [
 ] as const;
 
 export default function Kanban() {
+  const { data: session } = useSession();
+  const isAuditor = session?.user?.role === "auditor";
   const { tasks, updateTaskStatus, setTasks, evaluationId } = useStore();
 
   // Load existing tasks from Supabase on mount (handles page refresh)
@@ -176,25 +179,27 @@ export default function Kanban() {
                         {task.mitigation_steps}
                       </p>
 
-                      {/* Actions */}
-                      <div className="flex gap-1.5 pt-1 border-t border-white/60">
-                        {col.id !== "todo" && (
-                          <button
-                            onClick={() => handleStatusUpdate(task.id, col.id === "done" ? "in_progress" : "todo")}
-                            className="flex-1 text-xs py-1 rounded-lg bg-white border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 transition-colors"
-                          >
-                            ← Atrás
-                          </button>
-                        )}
-                        {col.id !== "done" && (
-                          <button
-                            onClick={() => handleStatusUpdate(task.id, col.id === "todo" ? "in_progress" : "done")}
-                            className="flex-1 text-xs py-1 rounded-lg bg-cavaltec-gold text-cavaltec-dark font-bold hover:bg-yellow-400 transition-colors"
-                          >
-                            {col.id === "todo" ? "Iniciar →" : "Cerrar ✓"}
-                          </button>
-                        )}
-                      </div>
+                      {/* Actions — hidden for auditor (read-only) */}
+                      {!isAuditor && (
+                        <div className="flex gap-1.5 pt-1 border-t border-white/60">
+                          {col.id !== "todo" && (
+                            <button
+                              onClick={() => handleStatusUpdate(task.id, col.id === "done" ? "in_progress" : "todo")}
+                              className="flex-1 text-xs py-1 rounded-lg bg-white border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 transition-colors"
+                            >
+                              ← Atrás
+                            </button>
+                          )}
+                          {col.id !== "done" && (
+                            <button
+                              onClick={() => handleStatusUpdate(task.id, col.id === "todo" ? "in_progress" : "done")}
+                              className="flex-1 text-xs py-1 rounded-lg bg-cavaltec-gold text-cavaltec-dark font-bold hover:bg-yellow-400 transition-colors"
+                            >
+                              {col.id === "todo" ? "Iniciar →" : "Cerrar ✓"}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
