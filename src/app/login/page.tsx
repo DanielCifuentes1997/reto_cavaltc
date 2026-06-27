@@ -1,25 +1,15 @@
 "use client";
 
-import Image from "next/image";
+import { useState } from "react";
 import { signIn } from "next-auth/react";
+import Link from "next/link";
 
 function ShieldIcon() {
   return (
     <svg width="56" height="56" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M12 2L4 5.5v6c0 4.97 3.47 9.63 8 10.73C16.53 21.13 20 16.47 20 11.5v-6L12 2z"
-        fill="rgba(240,180,41,0.15)"
-        stroke="#f0b429"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M9 12l2.5 2.5 4-5"
-        stroke="#f0b429"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M12 2L4 5.5v6c0 4.97 3.47 9.63 8 10.73C16.53 21.13 20 16.47 20 11.5v-6L12 2z"
+        fill="rgba(240,180,41,0.15)" stroke="#f0b429" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M9 12l2.5 2.5 4-5" stroke="#f0b429" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -56,11 +46,12 @@ function MicrosoftIcon() {
 }
 
 export default function LoginPage() {
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
   return (
     <div className="fixed inset-0 flex items-center justify-center overflow-auto"
       style={{ background: "linear-gradient(135deg, #0d1f33 0%, #1a3a5c 60%, #0d2744 100%)" }}>
 
-      {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full opacity-5"
           style={{ background: "radial-gradient(circle, #f0b429, transparent)" }} />
@@ -69,18 +60,23 @@ export default function LoginPage() {
       </div>
 
       <div className="relative z-10 w-full max-w-md px-4">
-        {/* Brand header */}
+        {/* Back to home */}
+        <div className="text-center mb-4">
+          <Link href="/" className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+            ← Volver al inicio
+          </Link>
+        </div>
+
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <ShieldIcon />
           </div>
-          <Image src="/logo_blanco.png" alt="CAVALTEC" width={180} height={48} className="object-contain mx-auto mb-1" priority />
+          <img src="/logo_blanco.png" alt="CAVALTEC" className="h-12 w-auto object-contain mx-auto mb-1" />
           <p className="text-slate-400 text-sm">
             Plataforma de Cumplimiento — Ley 1581 de 2012
           </p>
         </div>
 
-        {/* Login card */}
         <div className="rounded-2xl overflow-hidden shadow-2xl"
           style={{ background: "rgba(255,255,255,0.04)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.1)" }}>
 
@@ -93,10 +89,10 @@ export default function LoginPage() {
             </div>
 
             <div className="flex flex-col gap-3">
-              {/* Microsoft (enterprise preferred) */}
               <button
-                onClick={() => signIn("azure-ad", { callbackUrl: "/" })}
-                className="w-full flex items-center gap-4 px-5 py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+                onClick={() => signIn("azure-ad", { callbackUrl: "/dashboard" })}
+                disabled={!termsAccepted}
+                className="w-full flex items-center gap-4 px-5 py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
                 style={{ background: "#0078D4" }}
               >
                 <MicrosoftIcon />
@@ -104,28 +100,64 @@ export default function LoginPage() {
                 <span className="ml-auto text-xs text-blue-200 font-normal">Empresarial</span>
               </button>
 
-              {/* Google */}
               <button
-                onClick={() => signIn("google", { callbackUrl: "/" })}
-                className="w-full flex items-center gap-4 px-5 py-3.5 rounded-xl font-semibold text-sm bg-white hover:bg-slate-50 text-slate-800 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] shadow-sm"
+                onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+                disabled={!termsAccepted}
+                className="w-full flex items-center gap-4 px-5 py-3.5 rounded-xl font-semibold text-sm bg-white hover:bg-slate-50 text-slate-800 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 <GoogleIcon />
                 <span>Continuar con Google</span>
               </button>
 
-              {/* GitHub */}
               <button
-                onClick={() => signIn("github", { callbackUrl: "/" })}
-                className="w-full flex items-center gap-4 px-5 py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+                onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
+                disabled={!termsAccepted}
+                className="w-full flex items-center gap-4 px-5 py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
                 style={{ background: "#24292F" }}
               >
                 <GitHubIcon />
                 <span className="text-white">Continuar con GitHub</span>
               </button>
             </div>
+
+            {/* Terms checkbox */}
+            <label className="mt-5 flex items-start gap-3 cursor-pointer group">
+              <div className="relative flex-shrink-0 mt-0.5">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="sr-only"
+                />
+                <div
+                  className="w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-150"
+                  style={{
+                    background: termsAccepted ? "#f0b429" : "rgba(255,255,255,0.05)",
+                    borderColor: termsAccepted ? "#f0b429" : "rgba(255,255,255,0.2)",
+                  }}
+                >
+                  {termsAccepted && (
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6l3 3 5-5" stroke="#0d1f33" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+              <span className="text-xs text-slate-400 leading-relaxed group-hover:text-slate-300 transition-colors">
+                He leído y acepto la{" "}
+                <Link
+                  href="/habeas-data"
+                  target="_blank"
+                  className="text-cavaltec-gold underline underline-offset-2 hover:text-yellow-300"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Política de Tratamiento de Datos Personales
+                </Link>{" "}
+                (Ley 1581 de 2012) de CAVALTEC.
+              </span>
+            </label>
           </div>
 
-          {/* Footer */}
           <div className="px-8 py-4 border-t text-center" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
             <p className="text-xs text-slate-500">
               Al ingresar confirmas que cuentas con autorización de tu organización.
@@ -136,7 +168,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Bottom badge */}
         <div className="mt-6 text-center">
           <span className="text-xs text-slate-600">
             Hackathon MINTIC 2026 · Powered by CAVALTEC Cybersecurity

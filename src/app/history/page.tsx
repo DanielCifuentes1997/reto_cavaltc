@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { useStore } from "@/lib/store/useStore";
 
 interface EvaluationSummary {
@@ -70,7 +69,6 @@ export default function HistoryPage() {
 
   const handleNewEvaluation = async () => {
     setStarting(true);
-    // Mark current in_progress evaluation as completed (if any)
     if (evaluationId) {
       await fetch("/api/evaluation/complete", {
         method: "POST",
@@ -79,7 +77,7 @@ export default function HistoryPage() {
       }).catch(console.error);
     }
     reset();
-    router.push("/");
+    router.push("/dashboard");
   };
 
   if (loading || sessionStatus === "loading") {
@@ -95,14 +93,14 @@ export default function HistoryPage() {
       {/* Header */}
       <header className="bg-cavaltec-dark sticky top-0 z-40 shadow-xl">
         <div className="container mx-auto px-4 h-14 flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm">
+          <Link href="/dashboard" className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
             Dashboard
           </Link>
           <div className="w-px h-5 bg-white/10" />
-          <Image src="/logo_blanco.png" alt="CAVALTEC" width={100} height={26} className="object-contain" />
+          <img src="/logo_blanco.png" alt="CAVALTEC" className="h-7 w-auto object-contain" />
           <span className="text-slate-400 text-xs hidden sm:inline">
             · Historial de evaluaciones
           </span>
@@ -167,7 +165,7 @@ export default function HistoryPage() {
 
                   {ev.status === "in_progress" ? (
                     <Link
-                      href="/"
+                      href="/dashboard"
                       onClick={() => useStore.getState().setEvaluationSession(ev.id, "", "")}
                       className="text-xs font-bold text-cavaltec-blue hover:text-cavaltec-gold transition-colors"
                     >

@@ -1,5 +1,5 @@
 import { getServerSession } from "next-auth";
-import { streamText, tool, convertToModelMessages, isLoopFinished, isStepCount } from "ai";
+import { streamText, tool, convertToModelMessages, isStepCount } from "ai";
 import { google } from "@ai-sdk/google";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -9,7 +9,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { processAiEvaluation } from "@/lib/services/evaluationService";
 
 export async function POST(req: Request) {
-  // 1. Verificar autenticación
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -23,7 +22,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "evaluationId requerido" }, { status: 400 });
   }
 
-  // 2. Verificar que la evaluación pertenece a este usuario
   const supabase = createAdminClient();
   const { data: evaluation } = await supabase
     .from("evaluations")
@@ -38,13 +36,11 @@ export async function POST(req: Request) {
 
   const companyId = evaluation.company_id;
 
-  // 3. Ejecutar IA con herramienta de evaluación
   const result = streamText({
     model: google("gemini-2.5-flash"),
     system: systemPrompt,
     messages: await convertToModelMessages(messages),
-    // Continue after each tool call until the AI stops calling tools naturally, max 15 steps
-    stopWhen: [isLoopFinished(), isStepCount(15)],
+    stopWhen: [isStepCount(15)],
     tools: {
       registrar_evaluacion_ley_1581: tool({
         description:
@@ -62,6 +58,7 @@ export async function POST(req: Request) {
           accion_mejora: string;
         }) => {
           const { pregunta_id, cumple, justificacion, accion_mejora } = args;
+          console.log(`[tool] P${pregunta_id} cumple=${cumple} eval=${evaluationId}`);
           const { newScore, awardedWeight, newTask } = await processAiEvaluation(
             evaluationId,
             companyId,
@@ -70,7 +67,7 @@ export async function POST(req: Request) {
             justificacion,
             accion_mejora
           );
-
+          console.log(`[tool] P${pregunta_id} → newScore=${newScore}`);
           return {
             success: true,
             pregunta_id,
@@ -81,6 +78,12 @@ export async function POST(req: Request) {
           };
         },
       }),
+    },
+    onFinish: ({ steps }) => {
+      const toolCalls = steps.reduce((n, s) => n + (s.toolCalls?.length ?? 0), 0);
+      if (toolCalls === 0) {
+        console.warn(`[chat] Gemini NO llamó el tool en esta respuesta (eval=${evaluationId})`);
+      }
     },
   });
 

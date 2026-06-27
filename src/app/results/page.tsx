@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { useStore } from "@/lib/store/useStore";
 import ComplianceGauge from "@/components/ComplianceGauge";
 
@@ -14,28 +13,27 @@ interface QuestionDef {
   block: number;
   label: string;
   weight: number;
-  gateway?: boolean;
   qualitative?: boolean;
 }
 
 const QUESTIONS: QuestionDef[] = [
-  { id: 1,  block: 1, label: "Política de Tratamiento de Datos Personales", weight: 0,  gateway: true  },
-  { id: 2,  block: 1, label: "Aviso de Privacidad",                          weight: 10                },
-  { id: 3,  block: 1, label: "Consentimiento previo e informado",            weight: 10                },
-  { id: 4,  block: 1, label: "Mecanismos ARCO (derechos del titular)",       weight: 10                },
-  { id: 5,  block: 1, label: "Registro de Actividades de Tratamiento",       weight: 10                },
-  { id: 6,  block: 2, label: "Seguridad técnica",                            weight: 12                },
-  { id: 7,  block: 2, label: "Seguridad administrativa",                     weight: 12                },
-  { id: 8,  block: 2, label: "Seguridad física",                             weight: 12                },
-  { id: 9,  block: 3, label: "Protocolo de notificación a la SIC",           weight: 16                },
-  { id: 10, block: 3, label: "Retención y eliminación de datos",             weight: 8                 },
+  { id: 1,  block: 1, label: "Política de Tratamiento de Datos Personales", weight: 10 },
+  { id: 2,  block: 1, label: "Aviso de Privacidad",                          weight: 10 },
+  { id: 3,  block: 1, label: "Consentimiento previo e informado",            weight: 10 },
+  { id: 4,  block: 1, label: "Mecanismos ARCO (derechos del titular)",       weight: 10 },
+  { id: 5,  block: 1, label: "Registro de Actividades de Tratamiento",       weight: 10 },
+  { id: 6,  block: 2, label: "Seguridad técnica",                            weight: 10 },
+  { id: 7,  block: 2, label: "Seguridad administrativa",                     weight: 10 },
+  { id: 8,  block: 2, label: "Seguridad física",                             weight: 10 },
+  { id: 9,  block: 3, label: "Protocolo de notificación a la SIC",           weight: 10 },
+  { id: 10, block: 3, label: "Retención y eliminación de datos",             weight: 10 },
   { id: 11, block: 0, label: "Responsable / DPO designado",                  weight: 0,  qualitative: true },
 ];
 
 const BLOCKS = [
-  { id: 1, name: "Política y Consentimiento", max: 40, color: "#3b82f6" },
-  { id: 2, name: "Seguridad",                 max: 36, color: "#8b5cf6" },
-  { id: 3, name: "Gobernanza y Notificación", max: 24, color: "#f0b429" },
+  { id: 1, name: "Política y Consentimiento", max: 50, color: "#3b82f6" },
+  { id: 2, name: "Seguridad",                 max: 30, color: "#8b5cf6" },
+  { id: 3, name: "Gobernanza y Notificación", max: 20, color: "#f0b429" },
 ];
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -164,7 +162,7 @@ export default function ResultsPage() {
             Dashboard
           </Link>
           <div className="w-px h-5 bg-white/10" />
-          <Image src="/logo_blanco.png" alt="CAVALTEC" width={100} height={26} className="object-contain" />
+          <img src="/logo_blanco.png" alt="CAVALTEC" className="h-7 w-auto object-contain" />
           <span className="text-slate-400 text-xs hidden sm:inline">
             · Informe de cumplimiento Ley 1581 de 2012
           </span>

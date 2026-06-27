@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useStore } from "@/lib/store/useStore";
@@ -10,11 +9,11 @@ import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useVoiceSpeaker } from "@/hooks/useVoiceSpeaker";
 
 export default function Chat() {
-  const { evaluationId, updateScore, addTask, score } = useStore();
+  const { evaluationId, updateScore, setTasks, score } = useStore();
   const [inputText, setInputText] = useState("");
-  const processedToolCalls = useRef(new Set<string>());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastSpokenId = useRef<string | null>(null);
+  const prevStatusRef = useRef<string>("");
 
   const transportRef = useRef(
     new DefaultChatTransport({
@@ -23,8 +22,24 @@ export default function Chat() {
     })
   );
 
+  // Polls /api/evaluation/score and syncs Zustand store.
+  // Called from both onFinish (primary) and status-transition (backup).
+  const syncScore = useCallback(() => {
+    const eid = useStore.getState().evaluationId;
+    if (!eid) return;
+    fetch(`/api/evaluation/score?evaluationId=${eid}`)
+      .then((r) => r.json())
+      .then(({ score: newScore, tasks: newTasks }) => {
+        if (typeof newScore === "number") updateScore(newScore);
+        if (Array.isArray(newTasks) && newTasks.length > 0) setTasks(newTasks);
+      })
+      .catch(console.error);
+  }, [updateScore, setTasks]);
+
   const { messages, sendMessage, status } = useChat({
     transport: transportRef.current,
+    // onFinish fires once per complete AI response — the most reliable trigger
+    onFinish: syncScore,
   });
 
   // ── Voice hooks ──────────────────────────────────────────────────────────
@@ -38,28 +53,13 @@ export default function Chat() {
   const { isRecording, isSupported: micSupported, toggle: toggleMic } =
     useVoiceInput(handleTranscript);
 
-  // ── Connect tool results to store ────────────────────────────────────────
+  // ── Backup sync on status transition streaming/submitted → ready ──────────
   useEffect(() => {
-    for (const m of messages) {
-      if (m.role !== "assistant") continue;
-      for (const part of m.parts) {
-        if (part.type !== "dynamic-tool") continue;
-        if (part.state !== "output-available") continue;
-        if (part.toolName !== "registrar_evaluacion_ley_1581") continue;
-        if (processedToolCalls.current.has(part.toolCallId)) continue;
-
-        processedToolCalls.current.add(part.toolCallId);
-        const result = part.output as Record<string, unknown>;
-
-        if (typeof result?.nuevo_puntaje_global === "number") {
-          updateScore(result.nuevo_puntaje_global);
-        }
-        if (result?.nueva_tarea) {
-          addTask(result.nueva_tarea as Parameters<typeof addTask>[0]);
-        }
-      }
-    }
-  }, [messages, updateScore, addTask]);
+    const wasStreaming = prevStatusRef.current === "streaming" || prevStatusRef.current === "submitted";
+    const isNowReady = status === "ready";
+    prevStatusRef.current = status;
+    if (wasStreaming && isNowReady) syncScore();
+  }, [status, syncScore]);
 
   // ── Auto-speak new AI messages ────────────────────────────────────────────
   useEffect(() => {
@@ -85,7 +85,7 @@ export default function Chat() {
 
   const isLoading = status === "streaming" || status === "submitted";
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const text = inputText.trim();
     if (!text || isLoading) return;
@@ -95,7 +95,7 @@ export default function Chat() {
   };
 
   const handleMicToggle = () => {
-    if (isRecording) return toggleMic(); // stop → transcript applied → user sends
+    if (isRecording) return toggleMic();
     stopSpeaking();
     toggleMic();
   };
@@ -105,13 +105,10 @@ export default function Chat() {
 
       {/* ── Header ── */}
       <div className="bg-cavaltec-blue px-5 py-3 text-white flex items-center gap-3">
-        <Image
+        <img
           src="/logo_blanco.png"
           alt="CAVALTEC"
-          width={110}
-          height={28}
-          className="object-contain"
-          priority
+          className="h-9 w-auto object-contain"
         />
         <div className="flex-grow">
           <div className="flex items-center gap-1.5">
@@ -132,14 +129,12 @@ export default function Chat() {
           }`}
         >
           {audioEnabled ? (
-            /* Speaker on */
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
               <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
               <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
             </svg>
           ) : (
-            /* Speaker off */
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
               <line x1="23" y1="9" x2="17" y2="15" /><line x1="17" y1="9" x2="23" y2="15" />
@@ -251,7 +246,6 @@ export default function Chat() {
           className="flex-grow px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cavaltec-blue focus:border-transparent disabled:bg-slate-50 disabled:text-slate-400"
         />
 
-        {/* Mic button — only if browser supports it */}
         {micSupported && (
           <button
             type="button"
@@ -265,12 +259,10 @@ export default function Chat() {
             } disabled:opacity-40`}
           >
             {isRecording ? (
-              /* Stop square */
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <rect x="4" y="4" width="16" height="16" rx="2" />
               </svg>
             ) : (
-              /* Mic */
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2" />

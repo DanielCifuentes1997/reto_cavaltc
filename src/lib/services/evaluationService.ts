@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { calculateComplianceScore } from "@/lib/scoringEngine";
+import { calculateComplianceScore, getQuestionWeight } from "@/lib/scoringEngine";
 
 interface KanbanTask {
   id: string;
@@ -19,7 +19,7 @@ export async function processAiEvaluation(
 ): Promise<{ newScore: number; awardedWeight: number; newTask: KanbanTask | null }> {
   const supabase = createAdminClient();
 
-  // Obtener respuestas actuales para recalcular puntaje
+  // 1. Read all existing answers to calculate cumulative score
   const { data: currentAnswers } = await supabase
     .from("evaluation_answers")
     .select("question_id, is_compliant")
@@ -27,54 +27,63 @@ export async function processAiEvaluation(
 
   const answersMap: Record<number, boolean> = {};
   currentAnswers?.forEach((ans) => {
-    answersMap[ans.question_id] = ans.is_compliant;
+    answersMap[ans.question_id] = Boolean(ans.is_compliant);
   });
+  // Apply current answer (overrides any previous value for this question)
   answersMap[preguntaId] = cumple;
 
   const newScore = calculateComplianceScore(answersMap);
+  const awardedWeight = cumple ? getQuestionWeight(preguntaId) : 0;
 
-  // Calcular peso otorgado a esta pregunta específica
-  let awardedWeight = 0;
-  if (preguntaId >= 2 && preguntaId <= 5 && cumple && answersMap[1]) awardedWeight = 10;
-  else if (preguntaId >= 6 && preguntaId <= 8 && cumple) awardedWeight = 12;
-  else if (preguntaId === 9 && cumple) awardedWeight = 16;
-  else if (preguntaId === 10 && cumple) awardedWeight = 8;
+  // 2. Save answer: delete stale row first, then insert fresh one.
+  //    Avoids relying on a unique constraint for upsert ON CONFLICT.
+  await supabase
+    .from("evaluation_answers")
+    .delete()
+    .eq("evaluation_id", evaluationId)
+    .eq("question_id", preguntaId);
 
-  // Registrar respuesta (upsert para evitar duplicados si la IA reenvía)
-  await supabase.from("evaluation_answers").upsert(
-    {
-      evaluation_id: evaluationId,
-      question_id: preguntaId,
-      is_compliant: cumple,
-      ai_justification: justificacion,
-      awarded_weight: awardedWeight,
-    },
-    { onConflict: "evaluation_id,question_id" }
-  );
+  await supabase.from("evaluation_answers").insert({
+    evaluation_id: evaluationId,
+    question_id: preguntaId,
+    is_compliant: cumple,
+    ai_justification: justificacion,
+    awarded_weight: awardedWeight,
+  });
 
-  // Actualizar puntaje global en la evaluación
+  // 3. Persist cumulative score
   await supabase
     .from("evaluations")
     .update({ total_compliance_score: newScore })
     .eq("id", evaluationId);
 
-  // Si hay incumplimiento, crear tarea de mitigación en Kanban
-  if (!cumple) {
-    const { data: newTask } = await supabase
-      .from("kanban_tasks")
-      .insert({
-        company_id: companyId,
-        evaluation_id: evaluationId,
-        question_id: preguntaId,
-        title: `Brecha detectada: Criterio ${preguntaId}`,
-        mitigation_steps: accionMejora,
-        status: "todo",
-      })
-      .select("id, title, mitigation_steps, status, question_id")
-      .single();
+  // 4. Sync Kanban task (delete old, insert fresh)
+  const taskStatus = cumple ? "done" : "todo";
+  const taskTitle = cumple
+    ? `Control Validado: Criterio ${preguntaId}`
+    : `Brecha detectada: Criterio ${preguntaId}`;
+  const taskMitigation = cumple
+    ? `Cumplimiento verificado: ${justificacion}`
+    : accionMejora;
 
-    return { newScore, awardedWeight, newTask: newTask ?? null };
-  }
+  await supabase
+    .from("kanban_tasks")
+    .delete()
+    .eq("evaluation_id", evaluationId)
+    .eq("question_id", preguntaId);
 
-  return { newScore, awardedWeight, newTask: null };
+  const { data: newTask } = await supabase
+    .from("kanban_tasks")
+    .insert({
+      company_id: companyId,
+      evaluation_id: evaluationId,
+      question_id: preguntaId,
+      title: taskTitle,
+      mitigation_steps: taskMitigation,
+      status: taskStatus,
+    })
+    .select("id, title, mitigation_steps, status, question_id")
+    .single();
+
+  return { newScore, awardedWeight, newTask: newTask ?? null };
 }

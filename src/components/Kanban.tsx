@@ -9,7 +9,12 @@ const SEVERITY_COLOR: Record<number, { bg: string; text: string; label: string }
   3: { bg: "bg-yellow-50 border-yellow-200", text: "text-yellow-600", label: "Medio" },
 };
 
-function getSeverity(questionId: number | undefined) {
+function getSeverity(questionId: number | undefined, status: string) {
+  // Si la tarea ya es un control implementado, forzamos la etiqueta verde de Validado
+  if (status === "done") {
+    return { bg: "bg-green-50 border-green-200", text: "text-green-700", label: "Validado" };
+  }
+  
   if (!questionId) return SEVERITY_COLOR[3];
   if (questionId === 1 || questionId <= 3) return SEVERITY_COLOR[1];
   if (questionId <= 7) return SEVERITY_COLOR[2];
@@ -86,6 +91,9 @@ export default function Kanban() {
     [evaluationId, updateTaskStatus]
   );
 
+  // Calculamos las brechas reales (las que NO están en "done")
+  const realBrechasCount = tasks.filter(t => t.status !== "done").length;
+
   return (
     <div className="w-full h-[600px] bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-200 flex flex-col">
       {/* Header */}
@@ -99,7 +107,7 @@ export default function Kanban() {
         <div>
           <h2 className="text-white font-bold text-sm leading-none">Plan de Mitigación</h2>
           <p className="text-slate-400 text-xs mt-0.5">
-            {tasks.length} brecha{tasks.length !== 1 ? "s" : ""} identificada{tasks.length !== 1 ? "s" : ""}
+            {realBrechasCount} brecha{realBrechasCount !== 1 ? "s" : ""} identificada{realBrechasCount !== 1 ? "s" : ""}
           </p>
         </div>
         <div className="ml-auto flex items-center gap-1.5">
@@ -143,7 +151,8 @@ export default function Kanban() {
                 )}
 
                 {colTasks.map((task) => {
-                  const sev = getSeverity(task.question_id);
+                  // Pasamos el status a la función para que sepa si ya está Validado
+                  const sev = getSeverity(task.question_id, task.status);
                   return (
                     <div
                       key={task.id}

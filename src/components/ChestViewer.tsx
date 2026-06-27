@@ -8,7 +8,7 @@ import {
   useRef,
 } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useGLTF, Html, useProgress } from "@react-three/drei";
+import { useGLTF, Html } from "@react-three/drei";
 import * as THREE from "three";
 import gsap from "gsap";
 import { useStore } from "@/lib/store/useStore";
@@ -24,25 +24,27 @@ export function getModelPath(score: number): string {
 }
 
 const STAGE_LABELS: Record<string, { label: string; sub: string }> = {
-  "/0.glb":   { label: "Cofre dañado",      sub: "Estado inicial — sin protección"    },
-  "/20.glb":  { label: "En reparación",     sub: "Primeras medidas implementadas"     },
-  "/40.glb":  { label: "Reconstruyéndose",  sub: "Avance significativo"               },
-  "/60.glb":  { label: "Casi fortalecido",  sub: "Brechas menores pendientes"         },
-  "/100.glb": { label: "Fortaleza total",   sub: "Cumplimiento Ley 1581 alcanzado"    },
+  "/0.glb":   { label: "Así se ve tu seguridad en este momento",        sub: "Tu organización requiere atención urgente — empieza hoy"     },
+  "/20.glb":  { label: "Tu seguridad está empezando a mejorar",         sub: "Vas por buen camino, pero aún quedan brechas importantes"   },
+  "/40.glb":  { label: "Buen progreso — tu seguridad se fortalece",     sub: "Ya superaste la mitad del camino hacia el cumplimiento"     },
+  "/60.glb":  { label: "Casi fortalecido — ¡estás muy cerca!",          sub: "Solo unas pocas brechas más y tu organización estará segura" },
+  "/100.glb": { label: "¡Tu organización está completamente protegida!", sub: "Cumplimiento total Ley 1581 — ¡felicitaciones!"              },
 };
 
 // ── Loading indicator inside Canvas ────────────────────────────────────────
+// Note: useProgress (drei) causes setState-during-render when used as Suspense
+// fallback alongside useGLTF. Static spinner avoids the conflict entirely.
 function CanvasLoader() {
-  const { progress } = useProgress();
   return (
     <Html center>
-      <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", userSelect: "none" }}>
-        <div style={{ fontSize: "22px", fontWeight: "800", color: "#f0b429" }}>
-          {Math.round(progress)}%
-        </div>
-        <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>
-          Cargando modelo...
-        </div>
+      <div style={{
+        width: "32px", height: "32px",
+        border: "3px solid rgba(240,180,41,0.2)",
+        borderTopColor: "#f0b429",
+        borderRadius: "50%",
+        animation: "spin 0.8s linear infinite",
+      }}>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     </Html>
   );
@@ -61,7 +63,7 @@ function PlaceholderChest({ score }: { score: number }) {
   const lidColor = "#243f66";
 
   return (
-    <group ref={groupRef}>
+    <group ref={groupRef} scale={[1.9, 1.9, 1.9]}>
       {/* Body */}
       <mesh position={[0, -0.2, 0]} castShadow>
         <boxGeometry args={[1.6, 0.75, 1.0]} />
@@ -106,7 +108,7 @@ function PlaceholderChest({ score }: { score: number }) {
 }
 
 // ── Real GLB model ──────────────────────────────────────────────────────────
-function ChestModel({ path, score }: { path: string; score: number }) {
+function ChestModel({ path }: { path: string }) {
   const { scene } = useGLTF(path);
   const groupRef = useRef<THREE.Group>(null);
 
@@ -118,31 +120,13 @@ function ChestModel({ path, score }: { path: string; score: number }) {
     if (groupRef.current) groupRef.current.rotation.y += delta * 0.38;
   });
 
-  // Scale-in pop + emissive glow on mount
+  // Scale-in pop on mount — preserve original GLB material colors
   useEffect(() => {
     if (!groupRef.current) return;
     const group = groupRef.current;
-
     group.scale.set(0.02, 0.02, 0.02);
-    gsap.to(group.scale, { x: 1, y: 1, z: 1, duration: 0.65, ease: "back.out(1.5)" });
-
-    const emissiveHex = score >= 80 ? 0x22c55e : score >= 50 ? 0xf0b429 : 0x1a3a5c;
-    const emissiveIntensity = (score / 100) * 0.28;
-
-    cloned.traverse((child) => {
-      const mesh = child as THREE.Mesh;
-      if (!mesh.isMesh) return;
-      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      mats.forEach((m) => {
-        const mat = m as THREE.MeshStandardMaterial;
-        if (mat.emissive !== undefined) {
-          mat.emissive.setHex(emissiveHex);
-          mat.emissiveIntensity = emissiveIntensity;
-          mat.needsUpdate = true;
-        }
-      });
-    });
-  }, [cloned, score]);
+    gsap.to(group.scale, { x: 1.9, y: 1.9, z: 1.9, duration: 0.65, ease: "back.out(1.5)" });
+  }, []);
 
   return (
     <group ref={groupRef} position={[0, -0.5, 0]}>
@@ -169,7 +153,7 @@ function SmartChestLoader({ path, score }: { path: string; score: number }) {
 
   return (
     <Suspense fallback={<CanvasLoader />}>
-      <ChestModel path={path} score={score} />
+      <ChestModel path={path} />
     </Suspense>
   );
 }
@@ -186,12 +170,12 @@ export default function ChestViewer() {
       <div
         className="w-full rounded-2xl overflow-hidden"
         style={{
-          height: "240px",
+          height: "420px",
           background: "linear-gradient(160deg, #0d1f33 0%, #1a3a5c 100%)",
         }}
       >
         <Canvas
-          camera={{ position: [0, 1.0, 3.5], fov: 44 }}
+          camera={{ position: [0, 0.5, 3.8], fov: 58 }}
           gl={{ antialias: true, alpha: false }}
           shadows
         >

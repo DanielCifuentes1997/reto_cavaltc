@@ -1,383 +1,223 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import Image from "next/image";
-import { useSession, signOut } from "next-auth/react";
-import Chat from "@/components/Chat";
-import Kanban from "@/components/Kanban";
-import ComplianceGauge from "@/components/ComplianceGauge";
-import { useStore } from "@/lib/store/useStore";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-// Three.js only runs client-side — no SSR
-const ChestViewer = dynamic(() => import("@/components/ChestViewer"), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-[280px] rounded-2xl bg-cavaltec-dark flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-cavaltec-gold border-t-transparent rounded-full animate-spin" />
-    </div>
-  ),
-});
+gsap.registerPlugin(ScrollTrigger);
 
-type PageStatus = "loading" | "onboarding" | "ready";
+const HomeScene = dynamic(() => import("@/components/HomeScene"), { ssr: false });
 
-const SECTORS = [
-  "Ciberseguridad",
-  "Tecnología e Innovación",
-  "Financiero y Bancario",
-  "Salud y Bienestar",
-  "Educación",
-  "Manufactura e Industria",
-  "Gobierno y Sector Público",
-  "Telecomunicaciones",
-  "Comercio y Retail",
-  "Otro",
-];
+export default function LandingPage() {
+  const mainRef = useRef<HTMLDivElement>(null);
 
-export default function Home() {
-  const { data: session, status: sessionStatus } = useSession();
-  const { setEvaluationSession, evaluationId, score, companyName, tasks } = useStore();
-
-  const [pageStatus, setPageStatus] = useState<PageStatus>(() =>
-    useStore.getState().evaluationId ? "ready" : "loading"
-  );
-  const [formError, setFormError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState({ name: "", nit: "", sector: "" });
-
-  // Verificar si el usuario ya tiene empresa y evaluación
+  // GSAP text entrance — same pattern as the example
   useEffect(() => {
-    if (sessionStatus !== "authenticated" || evaluationId) return;
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        ".hero-text",
+        { y: 70, opacity: 0 },
+        { y: 0, opacity: 1, duration: 1.6, ease: "power4.out", stagger: 0.18, delay: 0.3 }
+      );
+      gsap.fromTo(
+        ".hero-badge",
+        { opacity: 0, scale: 0.85 },
+        { opacity: 1, scale: 1, duration: 1, ease: "back.out(1.7)", delay: 0.1 }
+      );
+    }, mainRef);
 
-    fetch("/api/evaluation/start", { method: "POST" })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.status === "ready") {
-          setEvaluationSession(data.evaluationId, data.companyId, data.companyName ?? undefined);
-          setPageStatus("ready");
-        } else if (data.status === "needs_onboarding") {
-          setPageStatus("onboarding");
-        }
-      })
-      .catch(() => setPageStatus("onboarding"));
-  }, [sessionStatus, evaluationId, setEvaluationSession]);
-
-  // Si ya hay evaluationId en el store (retorno a la página), ir directo al dashboard
-  useEffect(() => {
-    if (evaluationId) setPageStatus("ready");
-  }, [evaluationId]);
-
-  const handleOnboardingSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name || !form.nit || !form.sector) {
-      setFormError("Todos los campos son obligatorios.");
-      return;
-    }
-    setFormError("");
-    setIsSubmitting(true);
-
-    try {
-      const res = await fetch("/api/company/setup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (res.ok && data.status === "ready") {
-        setEvaluationSession(data.evaluationId, data.companyId, data.companyName);
-        setPageStatus("ready");
-      } else {
-        setFormError(data.error ?? "Error al registrar. Intenta de nuevo.");
-      }
-    } catch {
-      setFormError("Error de conexión. Intenta de nuevo.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // ── Loading ────────────────────────────────────────────────────────────────
-  if (sessionStatus === "loading" || pageStatus === "loading") {
-    return (
-      <div
-        className="fixed inset-0 flex flex-col items-center justify-center gap-4"
-        style={{ background: "linear-gradient(135deg, #0d1f33 0%, #1a3a5c 100%)" }}
-      >
-        <div className="w-10 h-10 border-[3px] border-cavaltec-gold border-t-transparent rounded-full animate-spin" />
-        <p className="text-cavaltec-gold text-sm font-semibold tracking-wide">
-          Verificando sesión segura...
-        </p>
-      </div>
-    );
-  }
-
-  // ── Onboarding ─────────────────────────────────────────────────────────────
-  if (pageStatus === "onboarding") {
-    return (
-      <div
-        className="fixed inset-0 flex items-center justify-center px-4 overflow-auto py-8"
-        style={{ background: "linear-gradient(135deg, #0d1f33 0%, #1a3a5c 100%)" }}
-      >
-        <div className="w-full max-w-lg">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <span className="inline-flex items-center gap-2 text-cavaltec-gold text-xs font-semibold uppercase tracking-widest mb-3">
-              <span className="w-2 h-2 rounded-full bg-cavaltec-gold animate-pulse" />
-              Configuración inicial
-            </span>
-            <h1 className="text-2xl font-extrabold text-white">
-              Registra tu empresa
-            </h1>
-            <p className="text-slate-400 text-sm mt-1">
-              Esta información contextualiza el diagnóstico de cumplimiento.
-            </p>
-          </div>
-
-          {/* Card */}
-          <div
-            className="rounded-2xl p-8 shadow-2xl"
-            style={{
-              background: "rgba(255,255,255,0.05)",
-              backdropFilter: "blur(12px)",
-              border: "1px solid rgba(255,255,255,0.1)",
-            }}
-          >
-            <form onSubmit={handleOnboardingSubmit} className="flex flex-col gap-5">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
-                  Nombre de la empresa *
-                </label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="Ej: Empresa S.A.S."
-                  className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-cavaltec-gold"
-                  style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)" }}
-                  autoFocus
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
-                  NIT *
-                </label>
-                <input
-                  type="text"
-                  value={form.nit}
-                  onChange={(e) => setForm((f) => ({ ...f, nit: e.target.value }))}
-                  placeholder="Ej: 900.123.456-7"
-                  className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-cavaltec-gold"
-                  style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)" }}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
-                  Sector *
-                </label>
-                <select
-                  value={form.sector}
-                  onChange={(e) => setForm((f) => ({ ...f, sector: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-cavaltec-gold appearance-none"
-                  style={{
-                    background: "rgba(255,255,255,0.07)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    color: form.sector ? "white" : "#64748b",
-                  }}
-                >
-                  <option value="" disabled style={{ background: "#0d1f33" }}>
-                    Selecciona el sector
-                  </option>
-                  {SECTORS.map((s) => (
-                    <option key={s} value={s} style={{ background: "#0d1f33", color: "white" }}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {formError && (
-                <p className="text-red-400 text-sm bg-red-400/10 rounded-lg px-4 py-2">
-                  {formError}
-                </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-3.5 rounded-xl font-bold text-sm text-cavaltec-dark mt-1 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
-                style={{ background: isSubmitting ? "#c8952a" : "#f0b429" }}
-              >
-                {isSubmitting ? "Iniciando..." : "Comenzar diagnóstico →"}
-              </button>
-            </form>
-          </div>
-
-          {/* User info */}
-          {session?.user && (
-            <div className="mt-5 flex items-center justify-center gap-2">
-              {session.user.image && (
-                <img src={session.user.image} alt="" className="w-6 h-6 rounded-full" />
-              )}
-              <span className="text-slate-500 text-xs">{session.user.email}</span>
-              <span className="text-slate-600">·</span>
-              <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                className="text-xs text-slate-500 hover:text-red-400 transition-colors"
-              >
-                Salir
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // ── Dashboard ──────────────────────────────────────────────────────────────
-  const tasksTotal = tasks.length;
-  const tasksDone = tasks.filter((t) => t.status === "done").length;
+    return () => ctx.revert();
+  }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-cavaltec-light">
+    <div
+      ref={mainRef}
+      className="w-full relative text-white"
+      style={{ background: "#060f1e" }}
+    >
+      {/* ── FIXED 3D CANVAS (stays in background while content scrolls over it) ── */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <HomeScene />
+      </div>
 
-      {/* Top navigation */}
-      <header className="bg-cavaltec-dark shadow-xl sticky top-0 z-40">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: "rgba(240,180,41,0.15)", border: "1px solid rgba(240,180,41,0.3)" }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2L4 5.5v6c0 4.97 3.47 9.63 8 10.73C16.53 21.13 20 16.47 20 11.5v-6L12 2z"
-                  stroke="#f0b429" strokeWidth="1.5" strokeLinejoin="round"
-                  fill="rgba(240,180,41,0.1)" />
-              </svg>
-            </div>
-            <div>
-              <Image src="/logo_blanco.png" alt="CAVALTEC" width={100} height={26} className="object-contain" priority />
-              {companyName && (
-                <p className="text-slate-400 text-xs leading-none mt-0.5">{companyName}</p>
-              )}
-            </div>
-          </div>
+      {/* ── SCROLLABLE CONTENT ── */}
+      <div className="relative z-10">
 
-          {/* Historial link */}
-          <Link
-            href="/history"
-            className="hidden sm:flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-xs font-medium"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
-              <rect x="9" y="3" width="6" height="4" rx="2" />
-            </svg>
-            Historial
-          </Link>
-
-          {/* Score badge */}
-          <div className="hidden sm:flex items-center gap-2 bg-white/5 rounded-xl px-4 py-2 border border-white/10">
-            <div
-              className="w-2 h-2 rounded-full"
-              style={{
-                background: score >= 80 ? "#22c55e" : score >= 50 ? "#f0b429" : "#ef4444",
-              }}
-            />
-            <span className="text-white font-bold text-sm">{score}%</span>
-            <span className="text-slate-400 text-xs">Cumplimiento</span>
-          </div>
-
-          {/* User menu */}
-          {session?.user && (
-            <div className="flex items-center gap-3">
-              {session.user.image && (
-                <img
-                  src={session.user.image}
-                  alt="Avatar"
-                  className="w-8 h-8 rounded-full border-2 border-white/20"
-                />
-              )}
-              <div className="hidden md:block text-right">
-                <p className="text-white text-xs font-semibold leading-none">
-                  {session.user.name ?? session.user.email}
-                </p>
-                <button
-                  onClick={() => signOut({ callbackUrl: "/login" })}
-                  className="text-slate-400 hover:text-red-400 text-xs transition-colors mt-0.5"
-                >
-                  Cerrar sesión
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </header>
-
-      {/* Main content */}
-      <main className="container mx-auto px-4 py-6 flex flex-col gap-6 flex-grow">
-
-        {/* Score overview: Chest 3D + Gauge + Stats */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-          {/* Cofre 3D */}
-          <div className="bg-cavaltec-dark rounded-2xl shadow-sm border border-slate-800 p-4">
-            <ChestViewer />
-          </div>
-
-          {/* Velocímetro */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center py-6 px-4">
-            <ComplianceGauge score={score} />
-          </div>
-
-          {/* Stats */}
-          <div className="flex flex-col gap-4">
-            {/* Risk level */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex-1">
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">
-                Nivel de riesgo
-              </p>
-              <p
-                className="text-2xl font-extrabold"
-                style={{ color: score >= 80 ? "#22c55e" : score >= 50 ? "#f0b429" : "#ef4444" }}
+        {/* ── NAV ── */}
+        <nav
+          className="fixed top-0 inset-x-0 z-50 border-b pointer-events-auto"
+          style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(6,15,30,0.75)", backdropFilter: "blur(14px)" }}
+        >
+          <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+            <img src="/logo_blanco.png" alt="CAVALTEC" className="h-11 w-auto object-contain" />
+            <div className="flex items-center gap-4">
+              <Link href="/login" className="text-slate-400 hover:text-white text-sm transition-colors hidden sm:block">
+                Iniciar sesión
+              </Link>
+              <Link
+                href="/login"
+                className="px-5 py-2.5 rounded-xl text-sm font-bold text-cavaltec-dark transition-all hover:scale-[1.04]"
+                style={{ background: "#f0b429" }}
               >
-                {score >= 80 ? "Bajo" : score >= 50 ? "Medio" : "Alto"}
-              </p>
-              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                {score >= 80
-                  ? "Organización conforme con los criterios principales de Ley 1581."
-                  : score >= 50
-                  ? "Existen brechas que requieren atención prioritaria."
-                  : "Vulnerabilidades críticas en protección de datos personales."}
-              </p>
+                Comenzar auditoría →
+              </Link>
+            </div>
+          </div>
+        </nav>
+
+        {/* ── HERO — full screen ── */}
+        <section className="h-screen w-full flex flex-col justify-center px-8 md:px-16 lg:px-24 pointer-events-none">
+          <div className="max-w-3xl">
+
+            {/* Badge */}
+            <div className="hero-badge inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-[0.3em]"
+              style={{ background: "rgba(240,180,41,0.1)", border: "1px solid rgba(240,180,41,0.25)", color: "#f0b429" }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-cavaltec-gold animate-pulse" />
+              Diagnóstico IA · Ley 1581 de 2012
             </div>
 
-            {/* Controls progress */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex-1">
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">
-                Controles implementados
-              </p>
-              <p className="text-2xl font-extrabold text-cavaltec-dark">
-                {tasksDone}
-                <span className="text-slate-300 font-normal"> / {tasksTotal}</span>
-              </p>
-              <div className="w-full h-2 bg-slate-100 rounded-full mt-3 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-green-500 transition-all duration-700"
-                  style={{ width: tasksTotal > 0 ? `${(tasksDone / tasksTotal) * 100}%` : "0%" }}
-                />
-              </div>
-              <p className="text-xs text-slate-400 mt-1">Brechas mitigadas en el Kanban</p>
+            {/* Main heading — mix-blend-difference makes it "cut through" the canvas */}
+            <h1 className="hero-text text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] uppercase mix-blend-difference">
+              Protege<br />
+              tu empresa<br />
+              <span style={{ color: "#f0b429" }}>con IA.</span>
+            </h1>
+
+            <p className="hero-text mt-8 text-base md:text-lg text-slate-300 max-w-lg leading-relaxed">
+              Audita el cumplimiento de la <strong className="text-white">Ley 1581</strong> en 15 minutos. Detecta brechas, obtén tu puntaje y descarga un informe ejecutivo listo para presentar.
+            </p>
+
+            <div className="hero-text mt-10 flex gap-4 pointer-events-auto">
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-bold text-base text-cavaltec-dark transition-all hover:scale-[1.04]"
+                style={{ background: "#f0b429", boxShadow: "0 0 32px rgba(240,180,41,0.3)" }}
+              >
+                Iniciar diagnóstico gratis
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
+                </svg>
+              </Link>
+              <a
+                href="#que-evaluamos"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-bold text-base text-white transition-all hover:bg-white/10"
+                style={{ border: "1px solid rgba(255,255,255,0.12)" }}
+              >
+                ¿Qué evaluamos?
+              </a>
+            </div>
+          </div>
+
+          {/* Scroll hint */}
+          <div className="absolute bottom-10 left-8 md:left-16 flex items-center gap-4">
+            <div className="w-px h-16 bg-gradient-to-b from-cavaltec-gold to-transparent animate-pulse" />
+            <span
+              className="text-xs uppercase tracking-[0.3em] text-cavaltec-gold"
+              style={{ writingMode: "vertical-rl" }}
+            >
+              Desplazar
+            </span>
+          </div>
+        </section>
+
+        {/* ── SECTION 2: El riesgo ── */}
+        <section
+          id="que-evaluamos"
+          className="min-h-screen w-full flex flex-col justify-center px-8 md:px-16 lg:px-24 pointer-events-none"
+        >
+          <div className="max-w-2xl ml-auto text-right">
+            <span className="text-xs font-semibold uppercase tracking-[0.35em] text-cavaltec-gold mb-6 block">
+              / El problema
+            </span>
+            <h2 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight mix-blend-difference">
+              Las multas de la SIC<br />son reales.
+            </h2>
+            <p className="mt-6 text-lg text-slate-300 leading-relaxed">
+              La Ley 1581 obliga a <strong className="text-white">toda empresa colombiana</strong> que recopile datos personales. Sanciones de hasta <strong className="text-cavaltec-gold">$2.500 millones de pesos</strong>. La mayoría de las empresas no sabe si cumple.
+            </p>
+
+            <div className="mt-10 grid grid-cols-3 gap-6 text-left pointer-events-none">
+              {[
+                { val: "72%", desc: "empresas sin política de datos adoptada" },
+                { val: "15 días", desc: "para notificar una vulneración a la SIC" },
+                { val: "11", desc: "criterios que evaluamos en 15 minutos" },
+              ].map((s) => (
+                <div key={s.val} className="border-t border-cavaltec-gold/30 pt-4">
+                  <p className="text-2xl font-extrabold text-cavaltec-gold">{s.val}</p>
+                  <p className="text-xs text-slate-400 mt-1 leading-snug">{s.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* Chat + Kanban */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Chat />
-          <Kanban />
+        {/* ── SECTION 3: Cómo funciona ── */}
+        <section className="min-h-screen w-full flex flex-col justify-center px-8 md:px-16 lg:px-24 pointer-events-none">
+          <div className="max-w-4xl">
+            <span className="text-xs font-semibold uppercase tracking-[0.35em] text-cavaltec-gold mb-6 block">
+              / Cómo funciona
+            </span>
+            <h2 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight mix-blend-difference mb-14">
+              De cero a diagnóstico<br />en 4 pasos.
+            </h2>
+
+            <ul className="flex flex-col gap-5 md:gap-6">
+              {[
+                { num: "01", title: "Inicia sesión", desc: "Microsoft, Google o GitHub. Sin contraseñas. Sin instalaciones." },
+                { num: "02", title: "Registra tu empresa", desc: "Nombre, NIT y sector. 30 segundos y el perfil queda listo." },
+                { num: "03", title: "Responde 11 preguntas con la IA", desc: "AUDITOR-1581 te guía en lenguaje natural. ~15 minutos." },
+                { num: "04", title: "Obtén tu informe", desc: "Puntaje 0-100%, PDF ejecutivo y tablero Kanban de mitigación." },
+              ].map((s) => (
+                <li
+                  key={s.num}
+                  className="group flex items-start gap-6 border-b pb-5 transition-colors duration-500"
+                  style={{ borderColor: "rgba(255,255,255,0.07)" }}
+                >
+                  <span className="text-5xl font-black text-cavaltec-gold opacity-50 leading-none flex-shrink-0 group-hover:opacity-100 transition-opacity duration-300">
+                    {s.num}
+                  </span>
+                  <div>
+                    <h3 className="text-white font-bold text-lg mb-1">{s.title}</h3>
+                    <p className="text-slate-400 text-sm leading-relaxed">{s.desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
-      </main>
+
+        {/* ── SECTION 4: CTA final ── */}
+        <section className="min-h-screen w-full flex flex-col justify-center items-center px-8 md:px-16 text-center pointer-events-none">
+          <div className="pointer-events-auto">
+            <span className="text-xs font-semibold uppercase tracking-widest text-cavaltec-gold mb-6 block">
+              El siguiente paso de tu empresa
+            </span>
+            <h2 className="text-5xl md:text-7xl font-black tracking-tighter mb-4 mix-blend-difference">
+              ¿Estás<br />protegido?
+            </h2>
+            <p className="text-slate-300 text-lg mb-12 max-w-md mx-auto leading-relaxed">
+              Descúbrelo hoy. Gratis. Sin compromiso. Sin instalaciones.
+            </p>
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-3 px-12 py-5 rounded-2xl font-bold text-lg text-cavaltec-dark transition-all hover:scale-[1.05] uppercase tracking-wide"
+              style={{ background: "#f0b429", boxShadow: "0 0 48px rgba(240,180,41,0.35)" }}
+            >
+              [ Iniciar diagnóstico ]
+            </Link>
+            <p className="text-slate-600 text-xs mt-8">
+              Al continuar aceptas nuestra{" "}
+              <Link href="/habeas-data" className="text-slate-500 underline hover:text-slate-300 transition-colors">
+                Política de Datos Personales
+              </Link>
+              {" "}· Hackathon MINTIC 2026 · CAVALTEC Cybersecurity
+            </p>
+          </div>
+        </section>
+
+      </div>
     </div>
   );
 }
