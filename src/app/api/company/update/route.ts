@@ -26,7 +26,6 @@ export async function PATCH(req: Request) {
   const { name, nit, sector, size } = parsed.data;
   const supabase = createAdminClient();
 
-  // Find the user's company via their latest evaluation
   const { data: evaluation } = await supabase
     .from("evaluations")
     .select("company_id")
@@ -71,7 +70,11 @@ export async function GET() {
     return NextResponse.json({ company: null });
   }
 
-  const company = evaluation.companies as {
+  const companyData = Array.isArray(evaluation.companies)
+    ? evaluation.companies[0]
+    : evaluation.companies;
+
+  const company = companyData as {
     name: string;
     nit: string | null;
     industry_sector: string;
