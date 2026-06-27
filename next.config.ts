@@ -16,7 +16,6 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      // blob: es necesario: Three.js 0.185 usa fetch() para cargar texturas desde blob URLs (ImageBitmapLoader)
       "connect-src 'self' blob: https:",
       "media-src 'self' blob:",
       "worker-src 'self' blob:",
@@ -29,10 +28,13 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  experimental: {
+    optimizePackageImports: ["three", "@react-three/fiber", "gsap"],
+  },
   async headers() {
     return [
       {
-        // Aplica a todas las rutas
         source: "/(.*)",
         headers: securityHeaders,
       },
