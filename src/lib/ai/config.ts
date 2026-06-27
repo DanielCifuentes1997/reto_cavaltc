@@ -23,54 +23,57 @@ FLUJO DE LA SESIÓN
 5. Al terminar P11 → entrega el mensaje de cierre (ver abajo).
 
 ═══════════════════════════════════════════
-BLOQUE 1 — POLÍTICA Y CONSENTIMIENTO (máx. 40%)
+BLOQUE 1 — POLÍTICA DE DATOS PERSONALES (máx. 40%)
 ═══════════════════════════════════════════
 
-P1:
-  "¿Su organización cuenta con una Política de Tratamiento de Datos Personales formalmente adoptada por la dirección (documento aprobado, con fecha y firma)?"
-  → Registra siempre la respuesta real del usuario (true o false) y continúa con P2.
+P1 [GATEWAY]:
+  "¿Su organización cuenta con una Política de Tratamiento de Datos Personales formalmente adoptada (documento aprobado por la dirección, con fecha y firma)?"
+
+  → SI cumple = TRUE: registra P1 y continúa con P2.
+
+  → SI cumple = FALSE (GATEWAY): registra P1=false, y a continuación llama la herramienta 4 veces más para registrar automáticamente P2=false, P3=false, P4=false y P5=false con justificacion="No aplica: la organización no cuenta con una política base de tratamiento de datos personales." y accion_mejora="Adoptar y publicar formalmente una Política de Tratamiento de Datos Personales conforme al Art. 13 de la Ley 1581." Luego, SIN preguntar P2-P5, formula directamente P6.
 
 P2:
-  "¿Cuenta con un Aviso de Privacidad accesible y visible para los titulares de los datos (ej: en su sitio web, formularios físicos, contratos)?"
+  "¿La política de tratamiento está documentada y publicada en un medio de fácil acceso para los titulares (sitio web, cartelería, intranet o cualquier canal visible)?"
 
 P3:
-  "¿Obtiene consentimiento previo, expreso e informado del titular antes de recopilar sus datos personales? ¿Cómo lo documenta?"
+  "¿La política define claramente las finalidades del tratamiento de los datos personales (para qué se usan los datos que recopila)?"
 
 P4:
-  "¿Tiene mecanismos operativos para que los titulares ejerzan sus derechos: Conocer, Actualizar, Rectificar y Suprimir sus datos (derechos KARS/ARCO)? Describa brevemente el canal habilitado."
+  "¿La política incluye los derechos de los titulares: conocer, actualizar, rectificar, suprimir, revocar el consentimiento y presentar quejas ante la SIC?"
 
 P5:
-  "¿Mantiene un Registro de Actividades de Tratamiento actualizado con todas las bases de datos que maneja (finalidad, categoría de datos, tiempo de retención, destinatarios)?"
+  "¿La política describe cómo los titulares pueden ejercer esos derechos (canal, plazo de respuesta y persona o área responsable)?"
 
 ═══════════════════════════════════════════
-BLOQUE 2 — SEGURIDAD (máx. 36%)
+BLOQUE 2 — PRIVACIDAD DESDE EL DISEÑO (máx. 36%)
 ═══════════════════════════════════════════
 
 P6:
-  "¿Implementa medidas de seguridad TÉCNICAS para proteger los datos personales? (ej: cifrado en tránsito y reposo, control de acceso por roles, registros de auditoría, backups)"
+  "¿Su organización incorpora Evaluaciones de Impacto de Privacidad (Privacy Impact Assessments, PIA) antes de implementar nuevos procesos, productos o sistemas que traten datos personales?"
 
 P7:
-  "¿Cuenta con medidas de seguridad ADMINISTRATIVAS? (ej: cláusulas de confidencialidad con empleados y proveedores, capacitación anual en protección de datos, acuerdos de procesamiento con encargados)"
+  "¿Aplica técnicas de minimización de datos? Es decir, ¿solo recopila los datos estrictamente necesarios para cada finalidad declarada?"
 
 P8:
-  "¿Tiene medidas de seguridad FÍSICAS para los soportes que contienen datos personales? (ej: control de acceso a sala de servidores, política de escritorio limpio, destrucción certificada de documentos)"
+  "¿Sus sistemas están configurados para recopilar el mínimo de datos por defecto (privacidad por defecto)? Por ejemplo: formularios sin campos opcionales pre-marcados, permisos mínimos por defecto, etc."
 
 ═══════════════════════════════════════════
-BLOQUE 3 — GOBERNANZA Y NOTIFICACIÓN (máx. 24%)
+BLOQUE 3 — GOBERNANZA (máx. 24%)
 ═══════════════════════════════════════════
 
 P9:
-  "¿Cuenta con un protocolo documentado para detectar y notificar incidentes de seguridad (vulneraciones) a la SIC y a los titulares afectados dentro de los plazos legales (15 días hábiles para la SIC)?"
+  "¿Cuenta con un sistema de administración de riesgos de privacidad que identifique, evalúe y gestione de manera continua las amenazas sobre los datos personales que trata?"
 
 P10:
-  "¿Define plazos máximos de retención para cada categoría de datos y tiene procedimientos de eliminación o anonimización segura al vencerlos?"
+  "¿Cuenta con un Oficial de Protección de Datos Personales (DPO o equivalente) que supervise el cumplimiento de la política de datos y sirva como punto de contacto ante los titulares y la SIC?"
 
 ═══════════════════════════════════════════
 CUALITATIVO — GOBERNANZA (sin peso en puntaje)
 ═══════════════════════════════════════════
 
 P11:
-  "Por último, ¿ha designado formalmente un Responsable o Delegado de Protección de Datos (DPO) en su organización, con funciones y alcance definidos?"
+  "Por último, ¿el Oficial de Protección de Datos está designado formalmente, con funciones, alcance y reporte definidos en un documento oficial de la organización?"
   Nota interna: registrar con accion_mejora descriptiva aunque cumple=true.
 
 ═══════════════════════════════════════════
@@ -78,7 +81,7 @@ MENSAJE DE CIERRE (después de registrar P11)
 ═══════════════════════════════════════════
 Entrega este resumen ejecutivo, adaptado al resultado real:
 
-"**Diagnóstico completado.** He evaluado los 11 criterios de la Ley 1581. [Nombre el nivel alcanzado: Bajo / Parcial / Alto cumplimiento].
+"**Diagnóstico completado.** He evaluado los 11 criterios de cumplimiento. [Nombre el nivel alcanzado: Bajo / Parcial / Alto cumplimiento].
 
 Los criterios que más impactan su brecha son: [menciona los 2-3 con cumple=false de mayor peso].
 

@@ -17,23 +17,23 @@ interface QuestionDef {
 }
 
 const QUESTIONS: QuestionDef[] = [
-  { id: 1,  block: 1, label: "Política de Tratamiento de Datos Personales", weight: 10 },
-  { id: 2,  block: 1, label: "Aviso de Privacidad",                          weight: 10 },
-  { id: 3,  block: 1, label: "Consentimiento previo e informado",            weight: 10 },
-  { id: 4,  block: 1, label: "Mecanismos ARCO (derechos del titular)",       weight: 10 },
-  { id: 5,  block: 1, label: "Registro de Actividades de Tratamiento",       weight: 10 },
-  { id: 6,  block: 2, label: "Seguridad técnica",                            weight: 10 },
-  { id: 7,  block: 2, label: "Seguridad administrativa",                     weight: 10 },
-  { id: 8,  block: 2, label: "Seguridad física",                             weight: 10 },
-  { id: 9,  block: 3, label: "Protocolo de notificación a la SIC",           weight: 10 },
-  { id: 10, block: 3, label: "Retención y eliminación de datos",             weight: 10 },
-  { id: 11, block: 0, label: "Responsable / DPO designado",                  weight: 0,  qualitative: true },
+  { id: 1,  block: 1, label: "Política de tratamiento de datos (gateway)",          weight: 0,  qualitative: true },
+  { id: 2,  block: 1, label: "Política documentada y publicada",                    weight: 10 },
+  { id: 3,  block: 1, label: "Define finalidades del tratamiento",                  weight: 10 },
+  { id: 4,  block: 1, label: "Incluye derechos de los titulares",                   weight: 10 },
+  { id: 5,  block: 1, label: "Menciona cómo ejercer los derechos",                  weight: 10 },
+  { id: 6,  block: 2, label: "Evaluaciones de impacto (PIA)",                       weight: 12 },
+  { id: 7,  block: 2, label: "Técnicas de minimización de datos",                   weight: 12 },
+  { id: 8,  block: 2, label: "Privacidad por defecto (mínimo de datos)",            weight: 12 },
+  { id: 9,  block: 3, label: "Sistema de administración de riesgos de privacidad",  weight: 16 },
+  { id: 10, block: 3, label: "Oficial de Protección de Datos (DPO)",                weight: 8  },
+  { id: 11, block: 0, label: "DPO designado formalmente con funciones definidas",    weight: 0,  qualitative: true },
 ];
 
 const BLOCKS = [
-  { id: 1, name: "Política y Consentimiento", max: 50, color: "#3b82f6" },
-  { id: 2, name: "Seguridad",                 max: 30, color: "#8b5cf6" },
-  { id: 3, name: "Gobernanza y Notificación", max: 20, color: "#f0b429" },
+  { id: 1, name: "Política de Datos Personales", max: 40, color: "#3b82f6" },
+  { id: 2, name: "Privacidad desde el Diseño",   max: 36, color: "#8b5cf6" },
+  { id: 3, name: "Gobernanza",                   max: 24, color: "#f0b429" },
 ];
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -88,7 +88,7 @@ export default function ResultsPage() {
       }).catch(console.error);
     }
     reset();
-    router.push("/");
+    router.push("/dashboard");
   };
 
   useEffect(() => {
@@ -98,7 +98,7 @@ export default function ResultsPage() {
     }
     if (sessionStatus !== "authenticated") return;
     if (!evaluationId) {
-      router.push("/");
+      router.push("/dashboard");
       return;
     }
 
@@ -129,7 +129,7 @@ export default function ResultsPage() {
       <div className="min-h-screen bg-cavaltec-light flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-500 font-semibold mb-4">{error}</p>
-          <Link href="/" className="text-cavaltec-blue hover:underline text-sm">← Volver al dashboard</Link>
+          <Link href="/dashboard" className="text-cavaltec-blue hover:underline text-sm">← Volver al dashboard</Link>
         </div>
       </div>
     );
@@ -153,7 +153,7 @@ export default function ResultsPage() {
       <header className="bg-cavaltec-dark sticky top-0 z-40 shadow-xl">
         <div className="container mx-auto px-4 h-14 flex items-center gap-4">
           <Link
-            href="/"
+            href="/dashboard"
             className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -360,7 +360,7 @@ export default function ResultsPage() {
         {/* Actions footer */}
         <section className="flex flex-col sm:flex-row gap-3 pb-8">
           <Link
-            href="/"
+            href="/dashboard"
             className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-cavaltec-blue text-cavaltec-blue font-bold text-sm hover:bg-cavaltec-blue hover:text-white transition-all"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">

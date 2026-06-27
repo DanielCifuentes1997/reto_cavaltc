@@ -33,6 +33,13 @@ const SECTORS = [
   "Otro",
 ];
 
+const SIZES = [
+  "Microempresa (1–10 empleados)",
+  "Pequeña empresa (11–50 empleados)",
+  "Mediana empresa (51–200 empleados)",
+  "Grande empresa (más de 200 empleados)",
+];
+
 export default function DashboardPage() {
   const { data: session, status: sessionStatus } = useSession();
   const { setEvaluationSession, evaluationId, score, companyName, tasks } = useStore();
@@ -42,7 +49,7 @@ export default function DashboardPage() {
   );
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState({ name: "", nit: "", sector: "" });
+  const [form, setForm] = useState({ name: "", nit: "", sector: "", size: "" });
 
   useEffect(() => {
     if (sessionStatus !== "authenticated" || evaluationId) return;
@@ -66,7 +73,7 @@ export default function DashboardPage() {
 
   const handleOnboardingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.nit || !form.sector) {
+    if (!form.name || !form.nit || !form.sector || !form.size) {
       setFormError("Todos los campos son obligatorios.");
       return;
     }
@@ -175,6 +182,25 @@ export default function DashboardPage() {
                 >
                   <option value="" disabled style={{ background: "#0d1f33" }}>Selecciona el sector</option>
                   {SECTORS.map((s) => (
+                    <option key={s} value={s} style={{ background: "#0d1f33", color: "white" }}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-300 uppercase tracking-wide">Tamaño de la empresa *</label>
+                <select
+                  value={form.size}
+                  onChange={(e) => setForm((f) => ({ ...f, size: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-cavaltec-gold appearance-none"
+                  style={{
+                    background: "rgba(255,255,255,0.07)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: form.size ? "white" : "#64748b",
+                  }}
+                >
+                  <option value="" disabled style={{ background: "#0d1f33" }}>Selecciona el tamaño</option>
+                  {SIZES.map((s) => (
                     <option key={s} value={s} style={{ background: "#0d1f33", color: "white" }}>{s}</option>
                   ))}
                 </select>

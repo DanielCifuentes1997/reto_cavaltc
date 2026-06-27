@@ -8,6 +8,7 @@ const bodySchema = z.object({
   name: z.string().min(2).max(200),
   nit: z.string().min(1).max(50),
   sector: z.string().min(2).max(100),
+  size: z.string().min(2).max(100).optional(),
 });
 
 export async function POST(req: Request) {
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { name, nit, sector } = parsed.data;
+  const { name, nit, sector, size } = parsed.data;
   const supabase = createAdminClient();
   const evaluatorId = session.user.email;
 

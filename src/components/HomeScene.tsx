@@ -151,77 +151,81 @@ function HomeModel() {
   const { scene } = useGLTF("/home.glb");
   const groupRef = useRef<THREE.Group>(null);
   const mainLightRef = useRef<THREE.PointLight>(null);
-  const [hovered, setHovered] = useState(false);
-  const [isAnimatingClick, setIsAnimatingClick] = useState(false);
+  
+  const hoveredRef = useRef(false);
+  const isAnimatingRef = useRef(false);
 
-  const cloned = useMemo(() => scene.clone(true), [scene]);
-
-  // Boost material quality
-  useEffect(() => {
-    cloned.traverse((child) => {
-      if (child instanceof THREE.Mesh && child.material) {
-        const mat = child.material as THREE.MeshStandardMaterial;
-        if (mat.roughness !== undefined) {
-          mat.roughness = 0.25;
-          mat.metalness = 0.85;
-          mat.needsUpdate = true;
-        }
+  // CORRECCIÓN DE OPACIDAD: Ajustamos el material del modelo clonado 
+  // para que reaccione a luces normales sin depender de descargas de internet
+  const cloned = useMemo(() => {
+    const model = scene.clone(true);
+    model.traverse((child: any) => {
+      if (child.isMesh && child.material) {
+        // Reducimos el metalness para evitar que se vea opaco/negro
+        child.material.metalness = Math.min(child.material.metalness, 0.5);
+        child.material.needsUpdate = true;
       }
     });
-  }, [cloned]);
+    return model;
+  }, [scene]);
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
 
-    // Orbiting front light
     if (mainLightRef.current) {
       mainLightRef.current.position.x = Math.sin(t * 0.5) * 2.2;
       mainLightRef.current.position.y = Math.cos(t * 0.3) * 1.5;
       mainLightRef.current.intensity = THREE.MathUtils.lerp(
         mainLightRef.current.intensity,
-        hovered ? 5.5 : 3.8,
+        hoveredRef.current ? 5.5 : 3.8,
         0.05
       );
     }
 
-    // Breathing + micro-wobble
-    if (groupRef.current && !isAnimatingClick) {
-      groupRef.current.rotation.y += hovered ? 0.018 : 0.008;
+    if (groupRef.current && !isAnimatingRef.current) {
+      groupRef.current.rotation.y += hoveredRef.current ? 0.018 : 0.008;
       groupRef.current.rotation.x = Math.sin(t * 0.5) * 0.06;
       groupRef.current.rotation.z = Math.sin(t * 0.8) * 0.04;
 
-      const base = hovered ? 1.08 : 1.0;
-      const breath = Math.sin(t * 1.2) * 0.015;
+      const base = hoveredRef.current ? 2.35 : 2.2;
+      const breath = Math.sin(t * 1.2) * 0.03;
       const target = new THREE.Vector3(base + breath, base + breath, base + breath);
       groupRef.current.scale.lerp(target, 0.08);
     }
   });
 
-  const handleClick = () => {
-    if (isAnimatingClick || !groupRef.current) return;
-    setIsAnimatingClick(true);
+  // CORRECCIÓN DEL HOVER: Recibimos "e" y detenemos la propagación del rayo
+  const handlePointerOver = (e: any) => {
+    e.stopPropagation();
+    hoveredRef.current = true;
+    document.body.style.cursor = "crosshair";
+    
+    if (isAnimatingRef.current || !groupRef.current) return;
+    isAnimatingRef.current = true;
     gsap.to(groupRef.current.rotation, {
       y: groupRef.current.rotation.y + Math.PI,
-      duration: 1.2,
+      duration: 1.0,
       ease: "power3.inOut",
-      onComplete: () => setTimeout(() => setIsAnimatingClick(false), 400),
+      onComplete: () => { isAnimatingRef.current = false; },
     });
+  };
+
+  const handlePointerOut = (e: any) => {
+    e.stopPropagation();
+    hoveredRef.current = false;
+    document.body.style.cursor = "auto";
   };
 
   return (
     <group>
-      {/* Dynamic gold front light — orbits the model */}
       <pointLight ref={mainLightRef} color="#f0c040" distance={18} decay={2} position={[2, 1, 3]} />
-      {/* Blue rim light from behind */}
       <pointLight position={[0, 0, -6]} intensity={9} color="#1a60c0" distance={22} decay={2} />
-      {/* Warm fill from below */}
       <pointLight position={[0, -3, 2]} intensity={2} color="#f0b429" distance={12} decay={2} />
 
       <group
         ref={groupRef}
-        onPointerOver={() => { setHovered(true); document.body.style.cursor = "crosshair"; }}
-        onPointerOut={() => { setHovered(false); document.body.style.cursor = "auto"; }}
-        onClick={handleClick}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
       >
         <primitive object={cloned} position={[0, -0.3, 0]} />
       </group>
@@ -261,8 +265,10 @@ export default function HomeScene() {
     >
       <fog attach="fog" args={["#060f1e", 6, 14]} />
 
-      <ambientLight intensity={0.3} />
-      <directionalLight position={[8, 8, 6]} intensity={1.2} color="#d0e8ff" />
+      <ambientLight intensity={1.5} />
+      <hemisphereLight args={["#ffffff", "#060f1e", 1.5]} />
+      <directionalLight position={[8, 8, 6]} intensity={2.5} color="#d0e8ff" castShadow />
+      <directionalLight position={[-8, 5, -6]} intensity={1.5} color="#f0b429" />
 
       <Suspense fallback={<CanvasLoader />}>
         <CavaltecParticles count={70} />

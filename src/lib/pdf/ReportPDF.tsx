@@ -32,17 +32,17 @@ export interface PDFData {
 
 // ── Question metadata ─────────────────────────────────────────────────────────
 const QUESTIONS = [
-  { id: 1,  block: 1, label: "Política de Tratamiento de Datos Personales",    weight: 20 },
-  { id: 2,  block: 1, label: "Aviso de Privacidad",                             weight:  5 },
-  { id: 3,  block: 1, label: "Consentimiento Previo y Documentado",             weight:  7 },
-  { id: 4,  block: 1, label: "Mecanismos KARS/ARCO",                            weight:  4 },
-  { id: 5,  block: 1, label: "Registro de Actividades de Tratamiento",          weight:  4 },
-  { id: 6,  block: 2, label: "Medidas de Seguridad Técnicas",                   weight: 15 },
-  { id: 7,  block: 2, label: "Medidas de Seguridad Administrativas",            weight: 10 },
-  { id: 8,  block: 2, label: "Medidas de Seguridad Físicas",                    weight: 11 },
-  { id: 9,  block: 3, label: "Protocolo de Notificación de Incidentes",         weight:  8 },
-  { id: 10, block: 3, label: "Retención y Eliminación de Datos",                weight: 16 },
-  { id: 11, block: 3, label: "Responsable de Protección de Datos (DPO)",        weight:  0, qualitative: true },
+  { id: 1, block: 1, label: "Política de Tratamiento de Datos Personales", weight: 0 },
+  { id: 2, block: 1, label: "Aviso de Privacidad", weight: 10 },
+  { id: 3, block: 1, label: "Consentimiento Previo y Documentado", weight: 10 },
+  { id: 4, block: 1, label: "Mecanismos KARS/ARCO", weight: 10 },
+  { id: 5, block: 1, label: "Registro de Actividades de Tratamiento", weight: 10 },
+  { id: 6, block: 2, label: "Medidas de Seguridad Técnicas", weight: 12 },
+  { id: 7, block: 2, label: "Medidas de Seguridad Administrativas", weight: 12 },
+  { id: 8, block: 2, label: "Medidas de Seguridad Físicas", weight: 12 },
+  { id: 9, block: 3, label: "Protocolo de Notificación de Incidentes", weight: 16 },
+  { id: 10, block: 3, label: "Retención y Eliminación de Datos", weight: 8 },
+  { id: 11, block: 3, label: "Responsable de Protección de Datos (DPO)", weight: 0, qualitative: true },
 ];
 
 const BLOCKS = [
