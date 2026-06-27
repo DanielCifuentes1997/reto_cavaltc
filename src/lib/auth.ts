@@ -8,6 +8,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 type AppRole = "evaluador" | "administrador" | "auditor";
 
 export const authOptions: NextAuthOptions = {
+  // Aseguramos el secret globalmente para evitar errores de configuración en producción
+  secret: process.env.NEXTAUTH_SECRET,
+  
   providers: [
     AzureADProvider({
       clientId: process.env.AZURE_AD_CLIENT_ID || "",
@@ -28,8 +31,6 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async jwt({ token, user }) {
-      // Re-fetch role on every JWT refresh so DB changes take effect immediately
-      // without requiring the user to sign out and back in.
       const email = (user?.email ?? token.email) as string | undefined;
 
       if (email) {
@@ -38,7 +39,6 @@ export const authOptions: NextAuthOptions = {
         const auditorEmails = (process.env.AUDITOR_EMAILS ?? "")
           .split(",").map((e) => e.trim()).filter(Boolean);
 
-        // Env vars take priority over DB — allows instant role assignment
         if (adminEmails.includes(email)) {
           token.role = "administrador" as AppRole;
         } else if (auditorEmails.includes(email)) {
@@ -54,7 +54,6 @@ export const authOptions: NextAuthOptions = {
           if (existing) {
             token.role = existing.role as AppRole;
           } else if (user?.email) {
-            // First login, not in any env list → default evaluador
             token.role = "evaluador" as AppRole;
             const { error: insertErr } = await supabase
               .from("user_roles")
@@ -62,27 +61,26 @@ export const authOptions: NextAuthOptions = {
             if (insertErr) console.error("[auth] insert user_roles:", insertErr.message);
           }
         }
-
         if (user?.email) token.company_id = "";
       }
       return token;
     },
 
     async session({ session, token }) {
-      // Expose role and company_id to client via useSession()
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = (token.role as string) ?? "evaluador";
         session.user.company_id = (token.company_id as string) ?? "";
       }
 
-      // Build Supabase-compatible JWT for RLS
       const signingSecret = process.env.SUPABASE_JWT_SECRET;
+      
+      // Validación crítica para que no falle en AWS
       if (signingSecret) {
         const payload = {
           aud: "authenticated",
           exp: Math.floor(new Date(session.expires).getTime() / 1000),
-          sub: token.id,
+          sub: token.id || token.sub,
           email: session.user?.email,
           role: "authenticated",
           app_metadata: {
@@ -91,6 +89,8 @@ export const authOptions: NextAuthOptions = {
           },
         };
         session.supabaseAccessToken = jwt.sign(payload, signingSecret);
+      } else {
+        console.error("ERROR: SUPABASE_JWT_SECRET no está definido en las variables de entorno.");
       }
 
       return session;
