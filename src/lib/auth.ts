@@ -28,42 +28,42 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async jwt({ token, user }) {
-      // `user` is only populated on the initial sign-in event
-      if (user?.email) {
-        const supabase = createAdminClient();
+      // Re-fetch role on every JWT refresh so DB changes take effect immediately
+      // without requiring the user to sign out and back in.
+      const email = (user?.email ?? token.email) as string | undefined;
 
-        // Query role from email-keyed table (compatible with NextAuth OAuth flow)
-        const { data: existing } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("email", user.email)
-          .maybeSingle();
+      if (email) {
+        const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+          .split(",").map((e) => e.trim()).filter(Boolean);
+        const auditorEmails = (process.env.AUDITOR_EMAILS ?? "")
+          .split(",").map((e) => e.trim()).filter(Boolean);
 
-        if (existing) {
-          token.role = existing.role as AppRole;
+        // Env vars take priority over DB — allows instant role assignment
+        if (adminEmails.includes(email)) {
+          token.role = "administrador" as AppRole;
+        } else if (auditorEmails.includes(email)) {
+          token.role = "auditor" as AppRole;
         } else {
-          // First login — resolve role from ADMIN_EMAILS env, then persist
-          const adminEmails = (process.env.ADMIN_EMAILS ?? "")
-            .split(",")
-            .map((e) => e.trim())
-            .filter(Boolean);
-
-          const role: AppRole = adminEmails.includes(user.email)
-            ? "administrador"
-            : "evaluador";
-
-          token.role = role;
-
-          const { error: insertErr } = await supabase
+          const supabase = createAdminClient();
+          const { data: existing } = await supabase
             .from("user_roles")
-            .insert({ email: user.email, role });
+            .select("role")
+            .eq("email", email)
+            .maybeSingle();
 
-          if (insertErr) {
-            console.error("[auth] insert user_roles:", insertErr.message);
+          if (existing) {
+            token.role = existing.role as AppRole;
+          } else if (user?.email) {
+            // First login, not in any env list → default evaluador
+            token.role = "evaluador" as AppRole;
+            const { error: insertErr } = await supabase
+              .from("user_roles")
+              .insert({ email: user.email, role: "evaluador" });
+            if (insertErr) console.error("[auth] insert user_roles:", insertErr.message);
           }
         }
 
-        token.company_id = "";
+        if (user?.email) token.company_id = "";
       }
       return token;
     },

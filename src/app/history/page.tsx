@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useStore } from "@/lib/store/useStore";
@@ -120,6 +120,15 @@ export default function HistoryPage() {
             · {isAuditor ? "Evaluaciones disponibles para auditar" : "Historial de evaluaciones"}
           </span>
 
+          {isAuditor && (
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="ml-auto text-xs text-slate-400 hover:text-red-400 transition-colors"
+            >
+              Cerrar sesión
+            </button>
+          )}
+
           {/* Solo evaluadores pueden iniciar nueva evaluación */}
           {!isAuditor && (
             <button
@@ -207,11 +216,11 @@ export default function HistoryPage() {
                       Auditar →
                     </Link>
                   ) : ev.status === "in_progress" ? (
-                    <Link href="/dashboard"
-                      onClick={() => useStore.getState().setEvaluationSession(ev.id, "", "")}
+                    <button
+                      onClick={() => { useStore.getState().reset(); router.push("/dashboard"); }}
                       className="text-xs font-bold text-cavaltec-blue hover:text-cavaltec-gold transition-colors">
                       Continuar →
-                    </Link>
+                    </button>
                   ) : (
                     <Link href={`/results?evaluationId=${ev.id}`}
                       className="text-xs font-bold text-cavaltec-blue hover:text-cavaltec-gold transition-colors">

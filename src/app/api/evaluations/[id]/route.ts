@@ -32,10 +32,31 @@ export async function DELETE(
     return NextResponse.json({ error: "No encontrado o acceso denegado" }, { status: 404 });
   }
 
+  // Get company_id before deleting
+  const { data: evalData } = await supabase
+    .from("evaluations")
+    .select("company_id")
+    .eq("id", id)
+    .single();
+
+  const companyId = evalData?.company_id;
+
   // Delete in dependency order
   await supabase.from("kanban_tasks").delete().eq("evaluation_id", id);
   await supabase.from("evaluation_answers").delete().eq("evaluation_id", id);
   await supabase.from("evaluations").delete().eq("id", id);
+
+  // Clean up company if it has no other evaluations
+  if (companyId) {
+    const { count } = await supabase
+      .from("evaluations")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", companyId);
+
+    if (count === 0) {
+      await supabase.from("companies").delete().eq("id", companyId);
+    }
+  }
 
   return NextResponse.json({ status: "ok" });
 }

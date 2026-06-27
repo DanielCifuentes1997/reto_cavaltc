@@ -17,12 +17,19 @@ export async function GET(req: Request) {
 
   const supabase = createAdminClient();
 
-  const { data: evaluation } = await supabase
+  const role = session.user.role;
+  const isPrivileged = role === "administrador" || role === "auditor";
+
+  let evalQuery = supabase
     .from("evaluations")
     .select("total_compliance_score")
-    .eq("id", evaluationId)
-    .eq("evaluator_id", session.user.email)
-    .single();
+    .eq("id", evaluationId);
+
+  if (!isPrivileged) {
+    evalQuery = evalQuery.eq("evaluator_id", session.user.email);
+  }
+
+  const { data: evaluation } = await evalQuery.single();
 
   const { data: tasks } = await supabase
     .from("kanban_tasks")

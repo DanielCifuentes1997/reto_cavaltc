@@ -18,15 +18,22 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "evaluationId requerido" }, { status: 400 });
   }
 
+  const role = session.user.role;
+  const isPrivileged = role === "administrador" || role === "auditor";
+
   const supabase = createAdminClient();
 
-  // Verify ownership
-  const { data: evaluation } = await supabase
+  // Admin and auditor can download any PDF; evaluador only their own
+  let query = supabase
     .from("evaluations")
     .select("id, total_compliance_score, status, created_at, company_id")
-    .eq("id", evaluationId)
-    .eq("evaluator_id", session.user.email)
-    .single();
+    .eq("id", evaluationId);
+
+  if (!isPrivileged) {
+    query = query.eq("evaluator_id", session.user.email);
+  }
+
+  const { data: evaluation } = await query.single();
 
   if (!evaluation) {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });

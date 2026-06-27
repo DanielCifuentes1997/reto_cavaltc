@@ -90,7 +90,7 @@ export default function LoginPage() {
 
             <div className="flex flex-col gap-3">
               <button
-                onClick={() => signIn("azure-ad", { callbackUrl: "/dashboard" })}
+                onClick={() => signIn("azure-ad", { callbackUrl: "/login" })}
                 disabled={!termsAccepted}
                 className="w-full flex items-center gap-4 px-5 py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
                 style={{ background: "#0078D4" }}
@@ -101,7 +101,7 @@ export default function LoginPage() {
               </button>
 
               <button
-                onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+                onClick={() => signIn("google", { callbackUrl: "/login" })}
                 disabled={!termsAccepted}
                 className="w-full flex items-center gap-4 px-5 py-3.5 rounded-xl font-semibold text-sm bg-white hover:bg-slate-50 text-slate-800 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
@@ -110,7 +110,7 @@ export default function LoginPage() {
               </button>
 
               <button
-                onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
+                onClick={() => signIn("github", { callbackUrl: "/login" })}
                 disabled={!termsAccepted}
                 className="w-full flex items-center gap-4 px-5 py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
                 style={{ background: "#24292F" }}

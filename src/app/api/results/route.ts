@@ -16,28 +16,33 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "evaluationId requerido" }, { status: 400 });
   }
 
+  const role = session.user.role;
+  const isPrivileged = role === "administrador" || role === "auditor";
+
   const supabase = createAdminClient();
 
-  // Verify ownership and fetch evaluation
-  const { data: evaluation } = await supabase
+  // Admin and auditor can view any evaluation; evaluador only their own
+  let query = supabase
     .from("evaluations")
     .select("id, total_compliance_score, status, created_at, company_id")
-    .eq("id", evaluationId)
-    .eq("evaluator_id", session.user.email)
-    .single();
+    .eq("id", evaluationId);
+
+  if (!isPrivileged) {
+    query = query.eq("evaluator_id", session.user.email);
+  }
+
+  const { data: evaluation } = await query.single();
 
   if (!evaluation) {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
 
-  // Fetch all answers for this evaluation
   const { data: answers } = await supabase
     .from("evaluation_answers")
     .select("question_id, is_compliant, ai_justification, awarded_weight")
     .eq("evaluation_id", evaluationId)
     .order("question_id", { ascending: true });
 
-  // Fetch company info
   const { data: company } = await supabase
     .from("companies")
     .select("name, nit, industry_sector")
